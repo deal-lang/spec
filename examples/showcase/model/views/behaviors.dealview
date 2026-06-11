@@ -1,0 +1,46 @@
+@header {
+    path:       model/views/behaviors.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: behavior allocation.
+ *
+ * Action definitions and the structural elements that perform them
+ * (@behavioral:<<performs>> edges). Answers "who does what" —
+ * the behavioral complement of the structure view.
+ */
+
+view {
+    title: "EV Platform — Behaviors & Allocation";
+    viewpoint: behavior;
+    direction: left-to-right;
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+// All action defs, plus the performers (collapsed) so the
+// <<performs>> edges render.
+
+include {
+    kind(action_def) within vehicle.behaviors;
+    model.EVPlatform;                   // performs FastCharge
+    model.EVPlatform.Propulsion;        // performs Accelerate, RegenerativeBrake
+    model.EVPlatform.Thermal;           // performs ThermalRegulate
+}
+
+// ─── Layout ─────────────────────────────────────────────────────
+// Performers left column, actions right column.
+
+[deal-id="model.EVPlatform"]            { x: 60; y: 60;  w: 220; h: 80; collapsed: true; }
+[deal-id="model.EVPlatform.Propulsion"] { x: 60; y: 200; w: 220; h: 80; collapsed: true; }
+[deal-id="model.EVPlatform.Thermal"]    { x: 60; y: 340; w: 220; h: 80; collapsed: true; }
+
+[deal-id="vehicle.behaviors.FastCharge"]         { x: 480; y: 60;  }
+[deal-id="vehicle.behaviors.Accelerate"]         { x: 480; y: 170; }
+[deal-id="vehicle.behaviors.RegenerativeBrake"]  { x: 480; y: 280; }
+[deal-id="vehicle.behaviors.ThermalRegulate"]    { x: 480; y: 390; }

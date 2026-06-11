@@ -1,0 +1,55 @@
+[project]
+name = "ev-platform"
+version = "0.1.0"
+schema = "deal/0.1"
+marking = "Unclassified"
+description = "Electric vehicle platform model — DEAL language showcase"
+
+[workspace]
+packages = [
+    "packages/*"
+]
+
+[workspace.aliases]
+vehicle    = "packages/vehicle"
+interfaces = "packages/interfaces"
+reqs       = "packages/requirements"
+use_cases  = "packages/use-cases"
+
+[dependencies]
+deal-std = "0.1"
+
+[simulations]
+registry = "simulations/deal.sims.toml"
+cache_dir = ".deal/simulations"
+
+[views]
+# Workspace theme — type-level defaults applied to every view (GV-9).
+theme = "model/global.dealview"
+
+# Per-view files are discovered by CO-LOCATION: <name>.dealview beside
+# <name>.dealx is automatically the view for that composition file.
+#   model/vehicle.dealview              -> model/vehicle.dealx
+#   model/traceability.dealview         -> model/traceability.dealx
+#   model/variants/sedan.dealview       -> model/variants/sedan.dealx
+#   model/variants/performance.dealview -> model/variants/performance.dealx
+#
+# Explicit entries are only needed for views NOT co-located with their
+# source. Cross-cutting views (membership drawn from multiple subsystems
+# or files) are the typical case. `source` is also the insertion target
+# for new model content created by editing through the view (GV-15).
+thermal   = { source = "model/vehicle.dealx", view = "model/views/thermal.dealview" }
+icd       = { source = "model/vehicle.dealx", view = "model/views/icd.dealview" }
+bdd       = { source = "packages/vehicle/index.deal", view = "model/views/bdd.dealview" }
+use-cases = { source = "packages/use-cases/index.deal", view = "model/views/use-cases.dealview" }
+behaviors = { source = "packages/vehicle/behaviors.deal", view = "model/views/behaviors.dealview" }
+
+#
+# Dependency direction is one-way (views -> model): .deal/.dealx files
+# never import .dealview files, and deleting a view never affects
+# `deal build`.
+
+[build.targets]
+sysml-v2 = { format = "json", output = "build/sysml-v2/" }
+reqif = { format = "xml", output = "build/reqif/" }
+docs = { format = "html", output = "build/docs/", template = "program-review" }

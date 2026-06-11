@@ -1,0 +1,48 @@
+@header {
+    path:       model/views/bdd.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: system Block Definition Diagram (BDD).
+ *
+ * The DEFINITION view — part defs and their generalization /
+ * composition relationships, drawn from the packages, not from the
+ * composition. This is the component library tier: what kinds of
+ * things exist, independent of how vehicle.dealx instantiates them.
+ *
+ * kind() filters keep this view current: a new part def added
+ * anywhere under vehicle.* joins the diagram automatically.
+ */
+
+view {
+    title: "EV Platform — Block Definitions (BDD)";
+    viewpoint: definition;
+    direction: top-to-bottom;
+    layout: tree;               // generalization/composition tree
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+
+include {
+    kind(part_def) within vehicle;
+    interfaces.thermal.ThermallyManaged;    // generalization target of
+                                            // BatteryPack & TractionMotor
+}
+
+// ─── Layout (deltas — tree auto-layout does the rest) ───────────
+// Pin the generalization root and the battery composition spine;
+// sibling part defs auto-flow.
+
+[deal-id="interfaces.thermal.ThermallyManaged"] { x: 420; y: 40; }
+
+[deal-id="vehicle.battery.BatteryPack"]   { x: 240; y: 180; }
+[deal-id="vehicle.motor.TractionMotor"]   { x: 600; y: 180; }
+
+[deal-id="vehicle.battery.BatteryModule"] { x: 240; y: 320; }
+[deal-id="vehicle.battery.BatteryCell"]   { x: 240; y: 440; }

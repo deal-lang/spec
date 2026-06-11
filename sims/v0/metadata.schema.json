@@ -1,0 +1,54 @@
+{
+  "$id": "https://deal-lang.org/spec/sims/v0/metadata.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Normative JSON Schema for DEAL Simulation Protocol v0 metadata.json. Every simulation metadata artifact MUST validate against this schema. See spec/sims/v0/README.md for the human-readable reference.",
+  "properties": {
+    "deal_sim_protocol": {
+      "const": "v0",
+      "description": "Protocol version tag. Always 'v0' for artifacts conforming to this schema."
+    },
+    "deal_sim_version": {
+      "description": "Version of the deal-sim SDK or Zig deal_sim.zig module that produced this artifact.",
+      "type": "string"
+    },
+    "duration_s": {
+      "description": "Wall-clock duration of the simulation run in seconds.",
+      "type": "number"
+    },
+    "reproducibility_tier": {
+      "description": "Declared @reproducibility tier: 'strict' (bit-identical), 'tolerant' (advisory), or 'advisory'. See D-75.",
+      "enum": ["advisory", "strict", "tolerant"],
+      "type": "string"
+    },
+    "sim_name": {
+      "description": "Name of the simulation as declared in deal.sims.toml.",
+      "type": "string"
+    },
+    "staleness_key": {
+      "description": "SHA-256 content hash of {resolved_inputs, sim_source_bytes, registry_entry_toml} (D-83). Used by deal check --verify to detect stale evidence.",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "ISO 8601 UTC timestamp of when the simulation run completed.",
+      "type": "string"
+    },
+    "tool": {
+      "description": "Tool adapter used to run this simulation: 'python', 'matlab', 'zig', or 'generic'.",
+      "enum": ["generic", "matlab", "python", "zig"],
+      "type": "string"
+    },
+    "tool_version": {
+      "description": "Version string of the tool runtime (e.g. Python version, MATLAB release).",
+      "type": "string"
+    },
+    "v": {
+      "const": 1,
+      "description": "Document format version. Always 1 for DEAL Simulation Protocol v0.",
+      "type": "integer"
+    }
+  },
+  "required": ["deal_sim_protocol", "duration_s", "reproducibility_tier", "timestamp", "tool", "v"],
+  "title": "DEAL Simulation Protocol v0 — metadata.json",
+  "type": "object"
+}

@@ -1,0 +1,40 @@
+@header {
+    path:       model/variants/sedan.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: Sedan variant specialization.
+ * Serves model/variants/sedan.dealx by co-location.
+ *
+ * Small view: the variant box with its base platform shown
+ * collapsed above it. The specializes edge is auto-routed.
+ */
+
+view {
+    title: "Sedan Variant";
+    viewpoint: structure;
+    direction: top-to-bottom;
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+
+include {
+    model.variants.Sedan.**;
+    model.EVPlatform;                   // collapsed base — specializes target
+}
+
+[deal-id="model.EVPlatform"] {
+    x: 120; y: 40; w: 260; h: 80;
+    collapsed: true;            // base platform — definition lives in vehicle view
+}
+
+[deal-id="model.variants.Sedan"] {
+    x: 80; y: 220; w: 340; h: 220;
+    attributes-compartment: visible;   // override theme: show range/weight overrides
+}

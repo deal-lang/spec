@@ -1,0 +1,899 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// DEAL Composition Grammar — dealx.ebnf
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Language:  DEAL — Digital Engineering Authoring Language
+// Version:   0.1.0-draft
+// Notation:  W3C EBNF (XML 1.0 Fifth Edition §6)
+// Status:    Phase 4 of grammar-architect workflow
+//
+// This file defines the grammar for .dealx composition files.
+// It depends on lexical.ebnf for all token definitions and
+// imports shared productions from deal.ebnf (HeaderBlock,
+// PackageDeclaration, ImportDeclaration, Expression, etc.).
+//
+// The .dealx grammar covers: [<system>], [<subsystem>], component
+// instances, [<connect>], [<expose>], [<traceability>], [<satisfy>]
+// with typed returns, [<validate>], [<allocate>], inline definitions,
+// and annotations within composition blocks.
+//
+// Design decisions implemented: CS-1 through CS-16, SD-17, SD-19,
+//   FS-1, FS-2, FS-3, PS-2, PS-4
+//
+// Shared productions imported from deal.ebnf:
+//   HeaderBlock, PackageDeclaration, ImportDeclaration, Expression,
+//   QualifiedName, NamespacePath, QuotedString, TypeAnnotation, Multiplicity,
+//   AnnotationStatement, CategoryAnnotation, StandaloneAnnotation,
+//   AnnotationBody, AnnotationField, Definition, MemberDeclaration,
+//   FunctionCallExpression, ConditionExpression, DefaultValue
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 1: File Structure
+// Design decisions: FS-1, CS-1, SD-17
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Top-level production for a .dealx composition file.
+ * Same header/package/import preamble as .deal, then composition
+ * and optional inline definitions.
+ *
+ * Design decisions: FS-1, CS-1, SD-17
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "@" (header), "package" (if no header)
+ * Normalization: DealxFile root AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L1 — @header { ... } package model; ...
+ *   model/traceability.dealx:L1 — @header { ... } package model; ...
+ *
+ * Ambiguity notes:
+ *   Same preamble as DealFile. After imports, content is either
+ *   a composition block ([<) or an inline definition (element keywords).
+ *   TAG_OPEN "[<" uniquely identifies composition content vs definitions.
+ */
+DealxFile ::=
+    HeaderBlock?
+    PackageDeclaration
+    ImportDeclaration*
+    _DealxContent*
+    EOF
+
+/**
+ * Top-level .dealx content — composition blocks or inline definitions.
+ *
+ * Design decisions: CS-1, SD-17
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   CompositionBlock → "[<" (TAG_OPEN)
+ *   Definition       → DOC_COMMENT, modifiers, direction, element keywords
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   "[<" (TAG_OPEN) uniquely starts composition content.
+ *   Element keywords uniquely start inline definitions.
+ *   No overlap — lexer emits TAG_OPEN as a distinct two-char token.
+ */
+_DealxContent ::=
+    CompositionBlock
+    | Definition
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 2: System and Subsystem Blocks
+// Design decisions: CS-2, CS-7
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Composition block — any top-level [< ... >] construct.
+ * Dispatches to system, traceability, or standalone tags.
+ *
+ * Design decisions: CS-2
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" (TAG_OPEN)
+ * Normalization: transparent — dispatches to specific block type
+ *
+ * Ambiguity notes:
+ *   After "[<", the next token determines the block type:
+ *     "system" → SystemBlock
+ *     "traceability" → TraceabilityBlock
+ *   These are the only two top-level composition blocks.
+ */
+CompositionBlock ::=
+    SystemBlock
+    | TraceabilityBlock
+
+/**
+ * System block — top-level system composition.
+ * Syntax: [<system Name (<<specializes>> Base)?>] ... [</system>]
+ *
+ * Design decisions: CS-2, CS-7
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "system"
+ * Normalization: SystemBlock AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L30 — [<system EVPlatform>] ... [</system>]
+ *   model/variants/sedan.dealx:L22 — [<system Sedan <<specializes>> EVPlatform>]
+ *
+ * Ambiguity notes:
+ *   "[<" + "system" uniquely identifies. The optional <<specializes>>
+ *   relationship follows the name before ">]".
+ */
+SystemBlock ::=
+    "[<" "system" IDENT StructuralRelationship? ">]"
+    _SystemContent*
+    "[</" "system" ">]"
+
+/**
+ * Content inside a system or subsystem block.
+ * Can contain subsystems, component instances, connections,
+ * exposes, annotations, and inline definitions/members.
+ *
+ * Design decisions: CS-2, CS-7, SD-17
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   SubsystemBlock    → "[<" "subsystem"
+ *   ConnectTag        → "[<" "connect"
+ *   ExposeTag         → "[<" "expose"
+ *   ComponentInstance → "[<" IDENT (not a reserved tag name)
+ *   AnnotationStatement → "@"
+ *   InlineMember      → DOC_COMMENT, modifiers, direction, "attribute", "derived"
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   After "[<", the keyword determines which tag:
+ *     "subsystem" → SubsystemBlock
+ *     "connect"   → ConnectTag
+ *     "expose"    → ExposeTag
+ *     IDENT       → ComponentInstance (user-defined type name)
+ *   All reserved tag keywords are disjoint.
+ *   Non-tag content starts with "@" (annotations) or definition keywords.
+ */
+_SystemContent ::=
+    SubsystemBlock
+    | ConnectTag
+    | ExposeTag
+    | ComponentInstance
+    | AnnotationStatement
+    | InlineMember
+
+/**
+ * Inline member — attribute/derived declarations inside composition blocks.
+ * Allows .dealx to declare attributes directly in system/subsystem scope.
+ *
+ * Design decisions: SD-17
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: DOC_COMMENT, "attribute", "derived", modifiers
+ * Normalization: transparent — reuses MemberDeclaration from deal.ebnf
+ *
+ * Showcase example:
+ *   model/variants/sedan.dealx:L33-38 —
+ *     attribute bodyStyle : String = "4-door sedan";
+ *     attribute dragCoefficient : Real = 0.23;
+ *   model/variants/performance.dealx:L85-87 —
+ *     derived attribute combinedPower : Power = ...;
+ */
+InlineMember ::=
+    MemberDeclaration
+
+/**
+ * Subsystem block — nested hierarchical decomposition.
+ * Syntax: [<subsystem Name>] ... [</subsystem>]
+ *
+ * Design decisions: CS-2, CS-7
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "subsystem"
+ * Normalization: SubsystemBlock AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L40 — [<subsystem EnergyStorage>] ... [</subsystem>]
+ *   model/vehicle.dealx:L82 — [<subsystem Propulsion>] ... [</subsystem>]
+ *   model/vehicle.dealx:L143 — [<subsystem Thermal>] ... [</subsystem>]
+ *
+ * Ambiguity notes:
+ *   "[<" + "subsystem" uniquely identifies. Subsystems can nest
+ *   arbitrarily (CS-7) — the grammar is recursive via _SystemContent.
+ */
+SubsystemBlock ::=
+    "[<" "subsystem" IDENT ">]"
+    _SystemContent*
+    "[</" "subsystem" ">]"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 3: Component Instances
+// Design decisions: CS-3, CS-8
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Component instance — instantiates a defined type with props.
+ * Syntax: [<TypeName as="instanceName" prop={value} ... />]
+ *
+ * Design decisions: CS-3, CS-8
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" IDENT (where IDENT is NOT a reserved tag name)
+ * Normalization: ComponentInstance AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L42-47 —
+ *     [<BatteryPack as="battery"
+ *         totalCapacity={kWh(89)}
+ *         usableCapacity={kWh(85)}
+ *         packMass={kg(550)}
+ *         nominalVoltage={V(800)}
+ *     />]
+ *   model/vehicle.dealx:L173 —
+ *     [<Wheel as="frontLeft" diameter={m(0.72)} mass={kg(28)} />]
+ *
+ * Ambiguity notes:
+ *   Distinguished from reserved tags (system, subsystem, connect, expose,
+ *   etc.) by the fact that the IDENT after "[<" is NOT one of those keywords.
+ *   The parser checks: if IDENT ∈ {system, subsystem, connect, expose,
+ *   traceability, satisfy, validate, allocate} → reserved tag.
+ *   Otherwise → ComponentInstance.
+ */
+ComponentInstance ::=
+    "[<" IDENT PropList "/>]"
+
+/**
+ * Property list — space-separated name=value pairs on a tag.
+ * Includes the required "as" prop and optional typed props.
+ *
+ * Design decisions: CS-3, CS-8
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "as", IDENT
+ * Normalization: transparent — list of PropAssignment nodes
+ */
+PropList ::=
+    PropAssignment*
+
+/**
+ * Property assignment — name=value or name={expression}.
+ *
+ * Design decisions: CS-3, CS-8
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: PropAssignment AST node
+ *
+ * Value forms:
+ *   as="name"             — string value (for instance naming)
+ *   prop={kWh(89)}        — expression in braces (typed value)
+ *   prop={0.97}           — expression in braces (numeric)
+ *   prop={960}            — expression in braces (integer)
+ *   prop={"active"}       — expression in braces (string)
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L42 — as="battery"
+ *   model/vehicle.dealx:L43 — totalCapacity={kWh(89)}
+ */
+PropAssignment ::=
+    IDENT "=" PropValue
+
+/**
+ * Property value — either a quoted string or a braced expression.
+ *
+ * Design decisions: CS-8
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   QuotedString   → quoted string value
+ *   "{"           → expression in braces
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   A quote starts a string. "{" starts a braced expression. No overlap.
+ */
+PropValue ::=
+    QuotedString
+    | "{" Expression "}"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 4: Connect Tag
+// Design decisions: CS-4, CS-5
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Connect tag — wires two ports together with physical and logical typing.
+ * Syntax: [<connect from="a" to="b" via={Type {...}} carrying={Type {...}} />]
+ *
+ * Design decisions: CS-4, CS-5
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "connect"
+ * Normalization: ConnectTag AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L56-65 —
+ *     [<connect from="bms.cellMonitor" to="battery.canBus"
+ *         via={CANHarness { connectorType: "Molex MX150" }}
+ *         carrying={CANMessages { messageIds: ["0x100", "0x101", "0x102", "0x103"] }}
+ *     />]
+ *   model/vehicle.dealx:L194-195 —
+ *     [<connect from="Propulsion.driveShaft" to="Drivetrain.rearWheelL" />]
+ *     (minimal form — no via/carrying)
+ *
+ * Ambiguity notes:
+ *   "[<" + "connect" uniquely identifies. Props are parsed by PropList.
+ *   The "via" and "carrying" props contain inline object literals
+ *   (connection def / flow def instances) — parsed as ViaCarryingValue.
+ */
+ConnectTag ::=
+    "[<" "connect" ConnectPropList "/>]"
+
+/**
+ * Connect-specific property list.
+ * Required: from, to. Optional: via, carrying.
+ *
+ * Design decisions: CS-4
+ * Layer: L4
+ * Marker: [ext]
+ * Normalization: transparent
+ */
+ConnectPropList ::=
+    ConnectProp*
+
+/**
+ * Individual connect property.
+ *
+ * FIRST tokens per alternative:
+ *   "from" → source port path
+ *   "to"   → target port path
+ *   "via"  → physical connection instance
+ *   "carrying" → logical flow instance
+ * Normalization: transparent
+ */
+ConnectProp ::=
+    "from" "=" PropValue
+    | "to" "=" PropValue
+    | "via" "=" "{" InlineObjectLiteral "}"
+    | "carrying" "=" "{" InlineObjectLiteral "}"
+
+/**
+ * Inline object literal — instantiates a connection def or flow def inline.
+ * Syntax: TypeName { field: value, field: value }
+ *
+ * Design decisions: CS-4, CS-5
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT (type name)
+ * Normalization: InlineObjectLiteral AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L58-60 —
+ *     CANHarness { connectorType: "Molex MX150" }
+ *   model/vehicle.dealx:L98-102 —
+ *     HVDCCable {
+ *         wireGauge: "2 AWG",
+ *         maxVoltage: V(850),
+ *         maxCurrent: A(400),
+ *         length: m(0.5),
+ *         connectorType: "RADSOK 150A"
+ *     }
+ */
+InlineObjectLiteral ::=
+    IDENT "{" ObjectField ( ","? ObjectField )* "}"
+    | IDENT "{" "}"
+
+/**
+ * Object field — key: value inside an inline object literal.
+ *
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: ObjectField AST node
+ */
+ObjectField ::=
+    IDENT ":" Expression
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 5: Expose Tag
+// Design decisions: CS-6
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Expose tag — promotes an internal port to the parent scope.
+ * Syntax: [<expose path as="externalName" />]
+ *
+ * Design decisions: CS-6
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "expose"
+ * Normalization: ExposeTag AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealx:L67 — [<expose battery.hvOut as="hvPowerOut" />]
+ *   model/vehicle.dealx:L68 — [<expose battery.chargeIn as="chargeIn" />]
+ */
+ExposeTag ::=
+    "[<" "expose" NamespacePath "as" "=" QuotedString "/>]"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 6: Traceability Block
+// Design decisions: CS-9
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Traceability block — contains allocations, satisfactions, and validations.
+ * Syntax: [<traceability Name>] ... [</traceability>]
+ *
+ * Design decisions: CS-9
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "traceability"
+ * Normalization: TraceabilityBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L25 —
+ *     [<traceability EVPlatformTraces>] ... [</traceability>]
+ */
+TraceabilityBlock ::=
+    "[<" "traceability" IDENT ">]"
+    _TraceabilityContent*
+    "[</" "traceability" ">]"
+
+/**
+ * Traceability content — allocate, satisfy, validate, or doc comments.
+ *
+ * Design decisions: CS-9, CS-10, CS-11, CS-12
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   AllocateTag    → "[<" "allocate"
+ *   SatisfyBlock   → "[<" "satisfy"  (or DOC_COMMENT before it)
+ *   ValidateBlock  → "[<" "validate"
+ *   DOC_COMMENT    → "/**"
+ * Normalization: transparent
+ */
+_TraceabilityContent ::=
+    DOC_COMMENT? ( AllocateTag | SatisfyBlock | ValidateBlock )
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 7: Allocate Tag
+// Design decisions: CS-12
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Allocate tag — traces a need to a requirement or requirement to design.
+ * Syntax: [<allocate from="source" to="target" relationship=<<op>> />]
+ *
+ * Design decisions: CS-12
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "allocate"
+ * Normalization: AllocateTag AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L32-34 —
+ *     [<allocate from="NEED_RANGE" to="REQ_SYS_001"
+ *         relationship=<<derives>>
+ *     />]
+ */
+AllocateTag ::=
+    "[<" "allocate" AllocatePropList "/>]"
+
+AllocatePropList ::=
+    AllocateProp*
+
+AllocateProp ::=
+    "from" "=" QuotedString
+    | "to" "=" QuotedString
+    | "relationship" "=" DELIMITED_OPERATOR
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 8: Satisfy Block
+// Design decisions: CS-10, CS-13, CS-14, CS-15, CS-16
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Satisfy block — executable requirement satisfaction with typed returns.
+ * The most complex composition construct in DEAL.
+ *
+ * Syntax:
+ *   [<satisfy requirement="REQ_X" by="Design" method="sim" (status="partial")?>]
+ *   => { returnName : Type; ... }
+ *       criteria { boolExpr }
+ *       evidence type { ... maps { ... } }
+ *       compute { ... }
+ *       gap { ... }
+ *   [</satisfy>]
+ *
+ * Design decisions: CS-10, CS-13, CS-14, CS-15, CS-16
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "satisfy"
+ * Normalization: SatisfyBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L68-100 — (REQ_SYS_001 satisfaction)
+ *   model/traceability.dealx:L150-184 — (REQ_BAT_002 partial with gap)
+ *
+ * Ambiguity notes:
+ *   "[<" + "satisfy" uniquely identifies the opening tag.
+ *   After ">]", the "=>" arrow uniquely starts the return type block.
+ *   Inside the body, "criteria", "evidence", "compute", "gap" are
+ *   disjoint keywords that dispatch to their respective blocks.
+ */
+SatisfyBlock ::=
+    "[<" "satisfy" SatisfyPropList ">]"
+    SatisfyReturnType?
+    SatisfyBodyContent*
+    "[</" "satisfy" ">]"
+
+/**
+ * Satisfy tag properties.
+ *
+ * Design decisions: CS-10, CS-16
+ * Layer: L4
+ * Marker: [ext]
+ * Normalization: transparent
+ */
+SatisfyPropList ::=
+    SatisfyProp*
+
+SatisfyProp ::=
+    "requirement" "=" QuotedString
+    | "by" "=" QuotedString
+    | "method" "=" QuotedString
+    | "status" "=" QuotedString
+
+/**
+ * Satisfy return type — typed return values declared with => { ... }.
+ * TypeScript-inspired arrow syntax per CS-10.
+ *
+ * Design decisions: CS-10, CS-15
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "=>"
+ * Normalization: SatisfyReturnType AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L71-74 —
+ *     => {
+ *         actualRange : Length;
+ *         margin : Length;
+ *         marginPercent : Real;
+ *     }
+ *
+ * Ambiguity notes:
+ *   "=>" is the ARROW token — unique, never confused with "=" (EQUALS).
+ *   The lexer distinguishes them by longest match.
+ */
+SatisfyReturnType ::=
+    "=>" "{" ReturnField+ "}"
+
+/**
+ * Return field — typed name declaration inside => { }.
+ *
+ * Design decisions: CS-15
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: ReturnField AST node
+ */
+ReturnField ::=
+    IDENT TypeAnnotation ";"
+
+/**
+ * Satisfy body content — criteria, evidence, compute, or gap blocks.
+ *
+ * Design decisions: CS-10, CS-13, CS-14
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   CriteriaBlock  → "criteria"
+ *   EvidenceBlock  → "evidence"
+ *   ComputeBlock   → "compute"
+ *   GapBlock       → "gap"
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   All four keywords are disjoint. No overlap.
+ */
+SatisfyBodyContent ::=
+    CriteriaBlock
+    | EvidenceBlock
+    | ComputeBlock
+    | GapBlock
+
+/**
+ * Criteria block — evaluable boolean expressions.
+ * Syntax: criteria { boolExpr (AND boolExpr)* }
+ *
+ * Design decisions: CS-10
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "criteria"
+ * Normalization: CriteriaBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L76-78 —
+ *     criteria {
+ *         actualRange >= REQ_SYS_001.minRange
+ *     }
+ *   model/traceability.dealx:L208-210 —
+ *     criteria {
+ *         actualMaxTemp <= REQ_BAT_003.maxTemp
+ *         AND actualMinTemp >= REQ_BAT_003.minTemp
+ *     }
+ */
+CriteriaBlock ::=
+    "criteria" "{" ConditionExpression+ "}"
+
+/**
+ * Evidence block — references simulation, test, analysis, or design evidence.
+ * Syntax: evidence type { source: "..." binding: "..." maps { ... } }
+ *
+ * Design decisions: CS-10, CS-13
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "evidence"
+ * Normalization: EvidenceBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L80-85 —
+ *     evidence simulation {
+ *         source: "simulations/dynamics/range_model.py"
+ *         binding: "range_model"
+ *         maps { totalRange -> actualRange }
+ *     }
+ *   model/traceability.dealx:L87-92 —
+ *     evidence test {
+ *         source: "test/data/dyno-results-2026-q2.csv"
+ *         column: "range_km"
+ *         row: "epa_combined"
+ *         maps { value -> actualRange }
+ *     }
+ *
+ * Evidence subtypes: simulation, test, analysis, design, inspection, demonstration
+ */
+EvidenceBlock ::=
+    "evidence" _EvidenceType "{" EvidenceField* MapsBlock? "}"
+
+/**
+ * Evidence type keyword — one of the standard verification methods.
+ *
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "simulation", "test", "analysis", "design",
+ *               "inspection", "demonstration"
+ */
+_EvidenceType ::=
+    "simulation"
+    | "test"
+    | "analysis"
+    | "design"
+    | "inspection"
+    | "demonstration"
+
+/**
+ * Evidence field — key: value metadata inside an evidence block.
+ *
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT (but NOT "maps" — that starts MapsBlock)
+ * Normalization: EvidenceField AST node
+ */
+EvidenceField ::=
+    IDENT ":" Expression
+
+/**
+ * Maps block — maps evidence output fields to satisfy return values.
+ * Syntax: maps { outputField -> returnField }
+ *
+ * Design decisions: CS-13
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "maps"
+ * Normalization: MapsBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L84 — maps { totalRange -> actualRange }
+ *   model/traceability.dealx:L219-221 —
+ *     maps {
+ *         maxBatteryTemp -> batteryMaxTemp
+ *         minBatteryTemp -> batteryMinTemp
+ *     }
+ */
+MapsBlock ::=
+    "maps" "{" MapsEntry+ "}"
+
+/**
+ * Maps entry — single field mapping: source -> target.
+ *
+ * Design decisions: CS-13
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: MapsEntry AST node
+ */
+MapsEntry ::=
+    NamespacePath "->" IDENT
+
+/**
+ * Compute block — derives additional values from return fields.
+ * Syntax: compute { name = expression; ... }
+ *
+ * Design decisions: CS-14
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "compute"
+ * Normalization: ComputeBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L94-97 —
+ *     compute {
+ *         margin = actualRange - REQ_SYS_001.minRange;
+ *         marginPercent = margin / REQ_SYS_001.minRange * 100;
+ *     }
+ */
+ComputeBlock ::=
+    "compute" "{" ComputeStatement+ "}"
+
+/**
+ * Compute statement — assignment of an expression to a return field.
+ *
+ * Design decisions: CS-14
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: ComputeStatement AST node
+ */
+ComputeStatement ::=
+    IDENT "=" Expression ";"
+
+/**
+ * Gap block — documents partial satisfaction with risk and mitigation.
+ *
+ * Design decisions: CS-10, D-05 [phase 05.1]
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "gap"
+ * Normalization: GapBlock AST node (body stored as opaque byte slice)
+ *
+ * IMPLEMENTATION NOTE (D-05, phase 05.1): The parser does NOT parse structured
+ * gap fields. The entire brace-balanced body is captured as an opaque byte slice
+ * via a brace-depth scan (parser_dealx.zig:1229-1252). The EBNF production below
+ * reflects this honest-opaque reality. Structured gap field parsing is deferred
+ * to a future wave (Wave E) when `deal check --verify` needs to consume gap data.
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L130-138 —
+ *     gap {
+ *         description: "30-min target met at 25°C; untested below 0°C";
+ *         missing: {
+ *             chargeTime_neg10C: "Cold weather test scheduled 2026-Q3",
+ *             chargeTime_neg30C: "Cold weather test scheduled 2026-Q3"
+ *         };
+ *         risk: "high";
+ *         mitigation: "Test facility booked at ALEC, Kapuskasing ON";
+ *     }
+ *
+ * Ambiguity notes:
+ *   "gap" keyword uniquely identifies this production.
+ *   The body content is brace-balanced but otherwise opaque — field structure
+ *   is NOT enforced by the parser and NOT enumerated in this EBNF.
+ */
+GapBlock ::=
+    "gap" _OpaqueBody
+
+/**
+ * Opaque brace-balanced body — used by GapBlock.
+ * The parser captures everything from "{" to the matching "}" as raw bytes.
+ * No field grammar is applied; the content is implementation-defined.
+ *
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ */
+_OpaqueBody ::=
+    "{" /* brace-balanced opaque content — not further parsed */ "}"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 9: Validate Block
+// Design decisions: CS-11
+// Layer: L4
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Validate block — use case validates a requirement.
+ * Syntax: [<validate requirement="REQ_X" by="UseCase">]
+ *             key: value
+ *         [</validate>]
+ *
+ * Design decisions: CS-11
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: "[<" "validate"
+ * Normalization: ValidateBlock AST node
+ *
+ * Showcase example:
+ *   model/traceability.dealx:L262-265 —
+ *     [<validate requirement="REQ_SYS_001" by="LongDistanceTrip">]
+ *         scenario: "450km highway trip with one charge stop"
+ *         status: "passed"
+ *         evidence: "Use case analysis completed 2026-05-01"
+ *     [</validate>]
+ */
+ValidateBlock ::=
+    "[<" "validate" ValidatePropList ">]"
+    ValidateField*
+    "[</" "validate" ">]"
+
+ValidatePropList ::=
+    ValidateProp*
+
+ValidateProp ::=
+    "requirement" "=" QuotedString
+    | "by" "=" QuotedString
+
+/**
+ * Validate field — key: value inside a validate block.
+ *
+ * Layer: L4
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: ValidateField AST node
+ */
+ValidateField ::=
+    IDENT ":" Expression
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// End of dealx.ebnf
+//
+// Production summary:
+//   File structure:     2 (DealxFile, _DealxContent)
+//   System/Subsystem:   5 (CompositionBlock, SystemBlock, _SystemContent,
+//                          InlineMember, SubsystemBlock)
+//   Component:          4 (ComponentInstance, PropList, PropAssignment, PropValue)
+//   Connect:            4 (ConnectTag, ConnectPropList, ConnectProp,
+//                          InlineObjectLiteral, ObjectField)
+//   Expose:             1 (ExposeTag)
+//   Traceability:       3 (TraceabilityBlock, _TraceabilityContent)
+//   Allocate:           3 (AllocateTag, AllocatePropList, AllocateProp)
+//   Satisfy:           13 (SatisfyBlock, SatisfyPropList, SatisfyProp,
+//                          SatisfyReturnType, ReturnField, SatisfyBodyContent,
+//                          CriteriaBlock, EvidenceBlock, _EvidenceType,
+//                          EvidenceField, MapsBlock, MapsEntry,
+//                          ComputeBlock, ComputeStatement, GapBlock,
+//                          _OpaqueBody [GapField/GapFieldValue replaced by D-05])
+//   Validate:           4 (ValidateBlock, ValidatePropList, ValidateProp,
+//                          ValidateField)
+//   Total:             ~42 productions
+//
+// Design decisions covered: CS-1 through CS-16, SD-17
+//
+// Shared productions from deal.ebnf:
+//   HeaderBlock, PackageDeclaration, ImportDeclaration, Expression,
+//   QualifiedName, NamespacePath, TypeAnnotation, StructuralRelationship,
+//   AnnotationStatement, MemberDeclaration, ConditionExpression,
+//   FunctionCallExpression, Definition
+//
+// ═══════════════════════════════════════════════════════════════════════════

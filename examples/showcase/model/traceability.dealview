@@ -1,0 +1,57 @@
+@header {
+    path:       model/traceability.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: requirements traceability matrix.
+ * Serves model/traceability.dealx by co-location.
+ *
+ * Three-column flow: Needs → Requirements → Design.
+ * Only column anchors are pinned; rows within each column are
+ * auto-laid-out vertically, so adding a requirement never requires
+ * touching this file.
+ */
+
+view {
+    title: "EV Platform — Traceability";
+    viewpoint: traceability;
+    direction: left-to-right;
+    grid: 20;
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+// Kind filters pull in ALL needs and requirements — new ones join
+// this view automatically without touching this file. The trace
+// relationships come from the traceability composition subtree.
+// (kind(...) within ... maps to SysML v2 expose + ElementFilterMember)
+
+include {
+    kind(need) within requirements.needs;
+    kind(requirement) within requirements.system;
+    model.EVPlatformTraces.**;          // allocate / satisfy edges
+    model.EVPlatform;                   // design column target (collapsed)
+}
+
+// ─── Column anchors ─────────────────────────────────────────────
+
+[deal-id="requirements.needs.NEED_RANGE"]        { x: 40;  y: 60;  }
+[deal-id="requirements.needs.NEED_FAST_CHARGE"]  { x: 40;  y: 160; }
+[deal-id="requirements.needs.NEED_PERFORMANCE"]  { x: 40;  y: 260; }
+[deal-id="requirements.needs.NEED_ALL_WEATHER"]  { x: 40;  y: 360; }
+[deal-id="requirements.needs.NEED_WEIGHT"]       { x: 40;  y: 460; }
+
+[deal-id="requirements.system.REQ_SYS_001"]      { x: 360; y: 60;  }
+[deal-id="requirements.system.REQ_SYS_002"]      { x: 360; y: 260; }
+[deal-id="requirements.system.REQ_SYS_003"]      { x: 360; y: 460; }
+[deal-id="requirements.system.REQ_BAT_002"]      { x: 360; y: 160; }
+[deal-id="requirements.system.REQ_BAT_003"]      { x: 360; y: 340; }
+[deal-id="requirements.system.REQ_THM_001"]      { x: 360; y: 400; }
+
+// Design column — satisfaction targets shown collapsed
+[deal-id="model.EVPlatform"]  { x: 700; y: 200; w: 220; h: 90; collapsed: true; }

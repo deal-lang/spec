@@ -1,0 +1,861 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// DEAL View Grammar — dealview.ebnf
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Language:  DEAL — Digital Engineering Authoring Language
+// Version:   0.1.0-draft
+// Notation:  W3C EBNF (XML 1.0 Fifth Edition §6)
+// Status:    Drafted via grammar-architect workflow (view-grammar extension)
+//
+// This file defines the grammar for .dealview view-sidecar files — the
+// third extension-selected grammar mode (GV-9). A view is membership +
+// layout (GV-13): what a diagram shows and where/how it draws it. View
+// state is never model; the canonical model lives in .deal/.dealx text.
+//
+// It depends on lexical.ebnf for all token definitions (including the
+// mode-scoped Section 9 view tokens: VIEW_IDENT, HEX_COLOR, DOUBLE_STAR)
+// and imports shared productions from deal.ebnf (HeaderBlock, Expression).
+//
+// Design decisions implemented:
+//   GV-2   CSS-shaped sidecar, attribute-selector keys, qualified-path keying
+//   GV-3   auto-layout base layer — sidecar stores deltas only
+//   GV-9   .dealview as extension-selected mode; theme file + file-per-view
+//   GV-13  membership via include/exclude; no-fabrication invariant
+//   FS-2   shared @header block
+//
+// Grammar-lock decisions (registered here; see Decision Record, Section 8):
+//   DV-1   .dealview lexer mode: hyphenated VIEW_IDENT + HEX_COLOR +
+//          DOUBLE_STAR; whitespace-required binary minus in filter exprs
+//   DV-2   edge selector is the string form [deal-connect="from -> to"],
+//          with a defined micro-grammar inside the string
+//   DV-3   declarations are an OPEN name:value shape; the property
+//          vocabulary is a normative table validated by `deal check --views`
+//   DV-4   built-in theme-slot vocabulary locked as: base, accent, muted
+//
+// Shared productions imported from deal.ebnf:
+//   HeaderBlock, Expression
+//
+// Dependency direction is one-way (GV-9): .deal/.dealx never reference
+// .dealview constructs; deleting any .dealview never affects `deal build`.
+//
+// NO-FABRICATION INVARIANT (GV-13, ADR verification item 11):
+// This grammar contains NO element-declaring production. Every production
+// below either references model elements (selectors, membership patterns)
+// or declares presentation state (declarations, tokens). Showing something
+// the model does not contain is unrepresentable, not merely checked.
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 1: File Structure
+// Design decisions: GV-9, FS-2
+// Layer: L5 (View)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Top-level production for a .dealview file.
+ * Same @header preamble as .deal/.dealx (FS-2; schema field is
+ * "dealview/0.1"), then any sequence of view content. There is NO
+ * package declaration and NO import declaration — a view is not a
+ * model namespace and participates in no namespace graph (GV-9:
+ * views are bound by co-location or deal.toml [views] registration,
+ * never by import).
+ *
+ * Design decisions: GV-9, FS-2
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "@" (header), "view" | "tokens" | "include" | "exclude"
+ *   | "[" | VIEW_IDENT (if no header)
+ * Normalization: DealviewFile root AST node
+ *
+ * Showcase example:
+ *   model/global.dealview:L1     — theme file: header, tokens, type rules
+ *   model/vehicle.dealview:L1    — co-located view: header, view block,
+ *                                  include, instance rules, edge rules
+ *
+ * Ambiguity notes:
+ *   "@" uniquely starts the header (only annotation form in this mode).
+ *   All content forms are then distinguished by one token — see
+ *   _DealviewContent.
+ */
+DealviewFile ::=
+    HeaderBlock?
+    _DealviewContent*
+    EOF
+
+/**
+ * View file content — the five content forms, in any order and number.
+ *
+ * Grammar permits any combination so that theme files (tokens + type
+ * rules, no view/include) and per-view files (view + include + instance
+ * rules) share one shape. Sema constraints (not grammar):
+ *   - at most one `view {}` block per file
+ *   - at most one `tokens {}` block per file
+ *   - theme files (deal.toml [views].theme) should not contain
+ *     instance selectors (W-code, non-blocking)
+ *
+ * Design decisions: GV-9, GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   "view"     → ViewBlock
+ *   "tokens"   → TokensBlock
+ *   "include"  → IncludeBlock
+ *   "exclude"  → ExcludeBlock
+ *   "[", other VIEW_IDENT → Rule
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   LL(1). The four block names are CONTEXTUAL keywords at this
+ *   position only (DV-1 / lexical.ebnf Section 9): no element kind is
+ *   named view/tokens/include/exclude, so a type-selector Rule can
+ *   never legitimately begin with these spellings at file level.
+ */
+_DealviewContent ::=
+    ViewBlock
+    | TokensBlock
+    | IncludeBlock
+    | ExcludeBlock
+    | Rule
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 2: View Block
+// Design decisions: GV-9, GV-13, DV-3
+// Layer: L5
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * View properties block — diagram-level configuration.
+ * Reuses the open declaration shape (DV-3); the view-level property
+ * vocabulary is part of the normative table (Section 7): title,
+ * viewpoint, direction, layout, grid, edge-labels, dangling-edges.
+ *
+ * Design decisions: GV-9, GV-13 (dangling-edges), DV-3
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "view"
+ * Normalization: ViewBlock AST node
+ *
+ * Showcase example:
+ *   model/vehicle.dealview:L23-28 —
+ *     view { title: "EV Platform — System Structure";
+ *            viewpoint: structure; grid: 20; direction: left-to-right; }
+ *   model/views/icd.dealview:L24-30 —
+ *     edge-labels: via carrying; dangling-edges: hide;
+ */
+ViewBlock ::=
+    "view" DeclarationBlock
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 3: Tokens Block
+// Design decisions: GV-9 (token resolution chain), DV-4
+// Layer: L5
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Workspace token definitions — the middle layer of the three-layer
+ * resolution chain (GV-9 deferred detail, locked here):
+ *
+ *   rule value (`stroke: power`)
+ *     → workspace token (this block)
+ *       → built-in slot (base | accent | muted — DV-4), resolved
+ *         against the active editor theme, OR
+ *       → color literal with light()/dark() variants, resolved
+ *         against the active color mode.
+ *
+ * Lives in the workspace theme file (deal.toml [views].theme) by
+ * convention; grammar does not forbid it in per-view files (sema W-code
+ * advises against it).
+ *
+ * Design decisions: GV-9, DV-4
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "tokens"
+ * Normalization: TokensBlock AST node
+ *
+ * Showcase example:
+ *   model/global.dealview:L41-52 — aliases (surface: base) and
+ *   mode-variant literals (power: light(#B45309) dark(#F59E0B))
+ *
+ * Ambiguity notes:
+ *   Separator discipline matches DeclarationBlock: ";" between
+ *   declarations, optional before "}".
+ */
+TokensBlock ::=
+    "tokens" "{"
+        ( TokenDeclaration ( ";" TokenDeclaration )* ";"? )?
+    "}"
+
+/**
+ * Single workspace-token definition: name, then either a built-in
+ * slot alias or one-or-two color-mode variants.
+ *
+ * Design decisions: GV-9, DV-4
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: VIEW_IDENT
+ * Normalization: TokenDeclaration AST node
+ *
+ * Sema (not grammar): each of light()/dark() at most once per token;
+ * a single-variant token is legal and the renderer derives the other
+ * mode (W-code recommends declaring both).
+ */
+TokenDeclaration ::=
+    VIEW_IDENT ":" TokenValue
+
+/**
+ * Token value — built-in slot alias or mode-variant color literal(s).
+ *
+ * Design decisions: DV-4 (slot list locked: base, accent, muted)
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   "base" | "accent" | "muted" → _BuiltinSlot
+ *   "light" | "dark"            → _ColorVariant+
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   LL(1) — the five spellings are disjoint. All five are contextual
+ *   (ordinary VIEW_IDENTs outside this position). A token may NOT
+ *   alias another workspace token (single-level resolution — keeps
+ *   the chain acyclic by construction).
+ */
+TokenValue ::=
+    _BuiltinSlot
+    | _ColorVariant+
+
+/**
+ * Built-in theme slots — the normative vocabulary every renderer
+ * provides, resolved against the active editor theme.
+ *
+ * LOCKED (DV-4): exactly these three. Growth is additive via a future
+ * grammar revision; renderers must support all listed slots.
+ *
+ * Design decisions: DV-4
+ * Layer: L5
+ * Marker: [ext]
+ *
+ * Showcase example:
+ *   model/global.dealview:L43-44 — surface: base; emphasis: accent;
+ */
+_BuiltinSlot ::=
+    "base" | "accent" | "muted"
+
+/**
+ * Color-mode variant — light(...) or dark(...) wrapping a hex literal.
+ *
+ * Design decisions: GV-9, DV-1 (HEX_COLOR token)
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "light", "dark"
+ * Normalization: ColorVariant AST node (mode, color)
+ *
+ * Showcase example:
+ *   model/global.dealview:L47 — light(#B45309) dark(#F59E0B)
+ */
+_ColorVariant ::=
+    ( "light" | "dark" ) "(" HEX_COLOR ")"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 4: Membership (include / exclude)
+// Design decisions: GV-13
+// Layer: L5
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Include block — declares what the view shows. A co-located view
+ * with no include block shows everything in its served file (GV-13
+ * default; backward compatible with sidecar-only layout files).
+ *
+ * SysML v2 mapping (GV-13): include patterns lower to expose
+ * (MembershipExpose / NamespaceExpose); `filter` lowers to
+ * ElementFilterMember (Clause 8.2.2.26).
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "include"
+ * Normalization: IncludeBlock AST node
+ *
+ * Showcase example:
+ *   model/views/thermal.dealview:L40-44 — subtree glob + member sets
+ *   model/traceability.dealview:L34-39 — kind filters + exact paths
+ */
+IncludeBlock ::=
+    "include" _MembershipBlock
+
+/**
+ * Exclude block — trims elements matched by include. Applied after
+ * include resolution; an element is visible iff matched by include
+ * (or the co-location default) and not matched by exclude.
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "exclude"
+ * Normalization: ExcludeBlock AST node
+ *
+ * Showcase example:
+ *   model/views/thermal.dealview:L46-49 —
+ *     exclude { model.EVPlatform.Thermal.reservoir; }
+ */
+ExcludeBlock ::=
+    "exclude" _MembershipBlock
+
+/**
+ * Membership block body — semicolon-separated pattern list.
+ * ";" between patterns, optional before "}".
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: transparent — list of MembershipPattern nodes
+ */
+_MembershipBlock ::=
+    "{" ( MembershipPattern ( ";" MembershipPattern )* ";"? )? "}"
+
+/**
+ * Membership pattern — the three pattern families of GV-13.
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   "kind"             → KindFilter
+ *   "filter"           → PredicateFilter
+ *   other VIEW_IDENT   → PathPattern
+ * Normalization: MembershipPattern AST node
+ *
+ * Ambiguity notes:
+ *   LL(1). "kind" and "filter" are contextual at pattern-start only;
+ *   a model element named kind/filter can still appear MID-path
+ *   (e.g. model.kind.x) since only the first token is tested, and at
+ *   pattern start an element literally named `kind` is reachable via
+ *   its qualified parent path. Validation: every pattern must resolve
+ *   against the IR (`deal check --views`, ADR verification item 10).
+ */
+MembershipPattern ::=
+    KindFilter
+    | PredicateFilter
+    | PathPattern
+
+/**
+ * Kind filter — all elements of a metaclass, optionally scoped.
+ * `kind(requirement) within requirements.system;`
+ *
+ * The kind name is an OPEN VIEW_IDENT (DV-3 discipline): the normative
+ * kind vocabulary is the IR element-kind set (part_def, port_def,
+ * connection_def, flow_def, item_def, attribute_def, action_def,
+ * state_def, need, requirement, constraint_def, use_case, interface_def,
+ * allocation_def, system, subsystem, component, connect, allocate,
+ * satisfy, validate, expose) — validated by sema against the IR schema,
+ * not enumerated in the grammar, so IR growth never bumps the grammar.
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "kind"
+ * Normalization: KindFilter AST node (kind, scope?)
+ *
+ * SysML v2 mapping: expose + ElementFilterMember on metaclass.
+ *
+ * Showcase example:
+ *   model/views/bdd.dealview:L33 — kind(part_def) within vehicle;
+ *   model/views/icd.dealview:L40-42 — three kind filters with scopes
+ */
+KindFilter ::=
+    "kind" "(" VIEW_IDENT ")" ( "within" PathPattern )?
+
+/**
+ * Predicate filter — arbitrary boolean expression over element
+ * properties. Reuses the deal.ebnf expression grammar.
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "filter"
+ * Normalization: PredicateFilter AST node
+ *
+ * Lexical note (DV-1): inside the expression, binary minus requires
+ * surrounding whitespace; "a-b" is one VIEW_IDENT.
+ *
+ * Showcase example: none yet (ADR GV-13 names the form; the showcase
+ * exercises globs, sets, and kind filters — a filter example should be
+ * added to the corpus when the first predicate use case lands).
+ *
+ * SysML v2 mapping: ElementFilterMember (Clause 8.2.2.26).
+ */
+PredicateFilter ::=
+    "filter" Expression
+
+/**
+ * Path pattern — qualified path with optional wildcards and a
+ * terminal-position subtree glob or member set.
+ *
+ * Pattern forms (GV-13):
+ *   model.EVPlatform.Thermal             exact qualified path
+ *   model.EVPlatform.*                   one-level wildcard (any step)
+ *   model.EVPlatform.Thermal.**          subtree glob (terminal only)
+ *   model.EVPlatform.X.{coolantIn, coolantOut}   member set (terminal only)
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: VIEW_IDENT, "*"
+ * Normalization: PathPattern AST node (steps[], terminal?)
+ *
+ * Ambiguity notes:
+ *   After ".", one token decides: VIEW_IDENT | "*" continues the head;
+ *   DOUBLE_STAR or "{" is the terminal. "**" and "{...}" are
+ *   GRAMMATICALLY terminal — mid-path subtree globs and member sets
+ *   are unrepresentable.
+ *   Path steps must be hyphen-free (model identifiers are IDENT);
+ *   a hyphenated VIEW_IDENT step is a sema error (cannot resolve).
+ */
+PathPattern ::=
+    _PathStep ( "." _PathStep )* ( "." _PathTerminal )?
+
+/**
+ * Path step — a name or one-level wildcard.
+ *
+ * Layer: L5 | Marker: [ext]
+ * Design decisions: GV-13
+ */
+_PathStep ::=
+    VIEW_IDENT
+    | "*"
+
+/**
+ * Terminal path element — subtree glob or member set.
+ *
+ * Layer: L5 | Marker: [ext]
+ * Design decisions: GV-13
+ * FIRST tokens per alternative: DOUBLE_STAR → glob; "{" → MemberSet
+ */
+_PathTerminal ::=
+    DOUBLE_STAR
+    | MemberSet
+
+/**
+ * Member set — explicit sibling selection at one path position.
+ * `model.EVPlatform.EnergyStorage.{coolantIn, coolantOut}`
+ *
+ * Design decisions: GV-13
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: MemberSet AST node
+ *
+ * Ambiguity notes: "{" after "." is unambiguous — DeclarationBlock
+ * braces never follow a dot.
+ *
+ * Showcase example:
+ *   model/views/thermal.dealview:L42 — .{coolantIn, coolantOut};
+ */
+MemberSet ::=
+    "{" VIEW_IDENT ( "," VIEW_IDENT )* "}"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 5: Rules and Selectors
+// Design decisions: GV-2, GV-3, DV-2
+// Layer: L5
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Rule — a selector and its declaration block. The cascade (GV-2/GV-3):
+ *
+ *   auto-layout  <  theme type rules  <  per-view type rules
+ *               <  attribute-refined type rules  <  instance rules
+ *
+ * Design decisions: GV-2, GV-3
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: VIEW_IDENT (type rule), "[" (instance/edge rule)
+ * Normalization: Rule AST node (selector, declarations)
+ *
+ * Showcase example:
+ *   model/global.dealview:L56-64   — system { fill: surface; ... }
+ *   model/global.dealview:L101-104 — connect[carrying="PowerDelivery"] {...}
+ *   model/vehicle.dealview:L43-45  — [deal-id="model.EVPlatform"] {...}
+ */
+Rule ::=
+    Selector DeclarationBlock
+
+/**
+ * Selector — type selector (optionally attribute-refined) or a bare
+ * attribute selector (instance / edge rule).
+ *
+ * Design decisions: GV-2 (attribute-selector form), DV-2
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   VIEW_IDENT → TypeSelector _AttributeSelector?
+ *   "["        → _AttributeSelector (instance/edge rule)
+ * Normalization: Selector AST node
+ *
+ * Ambiguity notes: LL(1) — VIEW_IDENT vs "[" are disjoint.
+ */
+Selector ::=
+    TypeSelector _AttributeSelector?
+    | _AttributeSelector
+
+/**
+ * Type selector — element-kind default rule (the theme layer).
+ *
+ * The kind name is an OPEN VIEW_IDENT validated against the same IR
+ * element-kind vocabulary as KindFilter (DV-3 discipline). Unknown
+ * kinds are sema diagnostics, not syntax errors.
+ *
+ * Design decisions: GV-2, GV-9 (theme layer), DV-3
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: VIEW_IDENT
+ * Normalization: TypeSelector AST node
+ *
+ * Showcase example:
+ *   model/global.dealview — system, subsystem, component, port,
+ *   connect, need, requirement, allocate, satisfy type rules
+ */
+TypeSelector ::=
+    VIEW_IDENT
+
+/**
+ * Attribute selector — [key="value"]. Three roles by key:
+ *
+ *   [deal-id="<DealIdRef>"]            instance rule (GV-2)
+ *   [deal-connect="<DealConnectRef>"]  edge rule (DV-2)
+ *   [<other-key>="<string>"]           refinement of a TypeSelector
+ *                                      by IR payload property
+ *                                      (e.g. connect[carrying="X"])
+ *
+ * Key discipline (sema, not grammar): deal-id and deal-connect are
+ * RESERVED keys, legal only as bare selectors (no preceding
+ * TypeSelector); any other key is legal only as a refinement (must
+ * follow a TypeSelector and name a property of that kind's IR payload).
+ *
+ * Design decisions: GV-2, DV-2
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "["
+ * Normalization: AttributeSelector AST node (key, value)
+ *
+ * Ambiguity notes: "[" begins an attribute selector in every .dealview
+ * context where a rule may start. The composition tag token "[<" is
+ * never emitted in .dealview mode; no multiplicity exists here.
+ *
+ * Showcase example:
+ *   model/global.dealview:L101 — connect[carrying="PowerDelivery"]
+ *   model/vehicle.dealview:L111 — [deal-connect="EnergyStorage.hvPowerOut
+ *     -> Propulsion.hvPowerIn"]
+ */
+_AttributeSelector ::=
+    "[" VIEW_IDENT "=" STRING_LITERAL "]"
+
+/**
+ * Micro-grammar of the deal-id selector string (GV-2): a qualified
+ * path. Parsed from the STRING_LITERAL content at parse time so an
+ * unparseable reference is a syntax-level diagnostic with a span
+ * inside the string; resolution against the IR is sema
+ * (`deal check --views`).
+ *
+ * Design decisions: GV-2 (qualified path as universal join key, D-23)
+ * Layer: L5
+ * Marker: [ext]
+ * Normalization: DealIdRef AST node (path steps)
+ *
+ * Note: segments are plain IDENT (hyphen-free) — these are model
+ * identifiers, lexed by the micro-parser in .deal identifier rules.
+ */
+DealIdRef ::=
+    IDENT ( "." IDENT )*
+
+/**
+ * Micro-grammar of the deal-connect selector string (DV-2): an
+ * endpoint pair selecting a connect by its from/to ports. Endpoints
+ * use the same path resolution as connect tags in .dealx (relative
+ * to the view's served composition scope).
+ *
+ * LOCKED (DV-2): the string form is the canonical edge selector,
+ * consistent with [deal-id="..."] and CSS attribute-selector shape.
+ * (The showcase NOTE flagging this as exemplar syntax is resolved.)
+ *
+ * Design decisions: DV-2, GV-2
+ * Layer: L5
+ * Marker: [ext]
+ * Normalization: DealConnectRef AST node (from, to)
+ *
+ * Showcase example:
+ *   model/vehicle.dealview:L111 —
+ *     [deal-connect="EnergyStorage.hvPowerOut -> Propulsion.hvPowerIn"]
+ */
+DealConnectRef ::=
+    DealIdRef "->" DealIdRef
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 6: Declarations and Values
+// Design decisions: GV-2, GV-3, DV-1, DV-3
+// Layer: L5
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Declaration block — the body of view blocks and rules.
+ * ";" separates declarations; optional before "}".
+ *
+ * SEPARATOR DISCIPLINE (stricter than SD-10's optional-semicolon rule,
+ * deliberately): a declaration's value sequence is space-separated and
+ * may contain bare identifiers (`edge-labels: via carrying`), so the
+ * ";" is what bounds it — without it, the next property name would be
+ * consumed as a value. SD-10 relies on a following KEYWORD to
+ * disambiguate; .dealview property names are open VIEW_IDENTs (DV-3),
+ * so no such keyword exists. The one SD-10-consistent relaxation is
+ * the optional trailing ";" before "}".
+ *
+ * Design decisions: DV-3, GV-2
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: transparent — list of Declaration nodes
+ *
+ * Showcase example:
+ *   model/vehicle.dealview:L43-45 — { x: 40; y: 40; w: 1280; h: 760; }
+ */
+DeclarationBlock ::=
+    "{" ( Declaration ( ";" Declaration )* ";"? )? "}"
+
+/**
+ * Declaration — open property: value(s) shape (DV-3).
+ *
+ * LOCKED (DV-3): any VIEW_IDENT parses as a property name; the
+ * normative property vocabulary (Section 7) is validated by
+ * `deal check --views` (unknown property → W-code; known property
+ * with wrong value type → E-code). CSS-style forward compatibility:
+ * renderers gain properties without grammar bumps.
+ *
+ * Design decisions: DV-3, GV-2, GV-3
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: VIEW_IDENT
+ * Normalization: Declaration AST node (name, values[])
+ *
+ * Ambiguity notes: Value+ is bounded by ";" or "}" — neither token
+ * can begin a Value, so the repetition terminates deterministically.
+ */
+Declaration ::=
+    VIEW_IDENT ":" Value+
+
+/**
+ * Value — one element of a declaration's value sequence.
+ *
+ * Design decisions: DV-1, DV-3, GV-9
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   STRING_LITERAL  '"'        → string (title: "...")
+ *   "-", [0-9]                 → _SignedNumber (x: 40; stroke-width: 1.5)
+ *   BOOLEAN_LITERAL            → boolean (collapsed: true)
+ *   HEX_COLOR "#"              → raw color (legal; W-code advises
+ *                                workspace tokens instead — GV-9:
+ *                                "rules reference workspace tokens
+ *                                only" is house style, not grammar)
+ *   "("                        → Point (waypoints)
+ *   VIEW_IDENT                 → keyword value or token reference
+ *                                (fill: surface; routing: orthogonal;
+ *                                 direction: left-to-right)
+ * Normalization: Value AST node (variant-tagged)
+ *
+ * Ambiguity notes: all six FIRST sets are disjoint at the token level
+ * (BOOLEAN_LITERAL is emitted by the lexer, never VIEW_IDENT).
+ */
+Value ::=
+    STRING_LITERAL
+    | _SignedNumber
+    | BOOLEAN_LITERAL
+    | HEX_COLOR
+    | Point
+    | VIEW_IDENT
+
+/**
+ * Signed number — geometry coordinates may be negative (positions are
+ * parent-relative and may extend left/above the local origin).
+ *
+ * Design decisions: GV-3
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "-", [0-9]
+ * Normalization: NumberLiteral AST node
+ */
+_SignedNumber ::=
+    "-"? ( INTEGER_LITERAL | REAL_LITERAL )
+
+/**
+ * Point — coordinate pair, used in waypoint sequences.
+ *
+ * Design decisions: GV-2 (edge-routing waypoints)
+ * Layer: L5
+ * Marker: [ext]
+ * FIRST tokens: "("
+ * Normalization: Point AST node (x, y)
+ *
+ * Showcase example:
+ *   model/vehicle.dealview:L112 —
+ *     waypoints: (380, 188) (480, 188);
+ */
+Point ::=
+    "(" _SignedNumber "," _SignedNumber ")"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 7: Normative Property Vocabulary (DV-3)
+// ─────────────────────────────────────────────────────────────────────────
+//
+// The grammar parses any property name (DV-3 open shape). THIS TABLE is
+// the normative vocabulary, validated by `deal check --views`:
+//   - unknown property name        → W-code (forward-compatible warning)
+//   - known name, wrong value type → E-code
+// Renderers MUST implement every property below; additions to this table
+// are spec revisions but NOT grammar changes.
+//
+// ── View-level properties (in `view {}`) ──────────────────────────────
+//   title            STRING            diagram title
+//   viewpoint        ident             structure | definition | interface |
+//                                      traceability | behavior | use-case |
+//                                      <user-defined>
+//   direction        ident             left-to-right | right-to-left |
+//                                      top-to-bottom | bottom-to-top
+//   layout           ident             layered (default) | tree | grid
+//   grid             number            snap-grid pitch (model units)
+//   edge-labels      ident+            payload fields shown on edges
+//                                      (e.g. via carrying)
+//   dangling-edges   ident             stub (default) | hide   (GV-13)
+//
+// ── Node geometry (instance rules; deltas from auto-layout, GV-3) ─────
+//   x, y             number            position, PARENT-RELATIVE
+//   w, h             number            size
+//   min-w, min-h     number            minimum size (type rules)
+//   collapsed        boolean           whole-node collapse
+//   <name>-compartment  ident          visible | collapsed | hidden —
+//                                      per-compartment state, name from
+//                                      the SysML v2 graphical notation
+//                                      compartment vocabulary (GV-14),
+//                                      e.g. title-compartment,
+//                                      attributes-compartment
+//
+// ── Node style (type or instance rules) ───────────────────────────────
+//   fill             token | color     background
+//   stroke           token | color     border / line color
+//   stroke-width     number            border / line weight
+//   corner-radius    number            rounded corners
+//   shape            ident             template variant where the
+//                                      notation allows one (e.g. port:
+//                                      square)
+//   size             number            uniform size for symbol nodes
+//                                      (ports)
+//
+// ── Edge style and routing (connect/allocate/satisfy rules) ──────────
+//   routing          ident             orthogonal | straight | spline
+//   line-style       ident             solid (default) | dashed | dotted
+//   arrowhead        ident             open | filled | none
+//   waypoints        Point+            route via points (instance rules)
+//
+// Value type "token | color" means: a VIEW_IDENT naming a workspace
+// token (resolved via the tokens {} chain, GV-9) or a raw HEX_COLOR
+// (legal; W-code advises tokens for theme coherence).
+// ─────────────────────────────────────────────────────────────────────────
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Section 8: Decision Record and Verification Summary
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ── Grammar-lock decisions (to register alongside GV-1..GV-15) ────────
+//
+// DV-1 — View lexer mode: hyphenated VIEW_IDENT + HEX_COLOR + DOUBLE_STAR
+//   .dealview mode extends IDENT with internal hyphens and adds the
+//   HEX_COLOR and DOUBLE_STAR tokens (lexical.ebnf Section 9). Binary
+//   minus inside filter expressions requires surrounding whitespace.
+//   Rejected: parser-composed names (adjacency constraints inexpressible
+//   in W3C EBNF); vocabulary rename to snake/camelCase (diverges from
+//   the CSS-shaped sidecar GV-2 chose; would churn the corpus).
+//
+// DV-2 — Edge selector is the string form [deal-connect="from -> to"]
+//   Consistent with [deal-id="..."] and the CSS attribute-selector shape
+//   (GV-2). The string content has the DealConnectRef micro-grammar,
+//   parsed at parse time. Rejected: structured attributes
+//   ([deal-connect from=".." to=".."]) — breaks the uniform selector
+//   shape for no expressiveness gain.
+//
+// DV-3 — Open declaration shape + normative property table
+//   Declaration ::= VIEW_IDENT ":" Value+ parses any property; Section 7
+//   is the normative vocabulary enforced by `deal check --views`.
+//   Rejected: closed per-property productions (every renderer addition
+//   becomes a grammar bump); hybrid (two rule regimes to maintain).
+//   The no-fabrication invariant (GV-13) is unaffected — it concerns
+//   element-declaring productions, which this grammar has none of.
+//
+// DV-4 — Built-in slot vocabulary locked: base, accent, muted
+//   Exactly the three slots the ADR names. Growth is additive via spec
+//   revision. Rejected: extended semantic-state set (permanent renderer
+//   obligations); grammar-agnostic slot list (ADR requires the list to
+//   lock with the grammar).
+//
+// ── Production summary ────────────────────────────────────────────────
+//   Public:  DealviewFile, ViewBlock, TokensBlock, TokenDeclaration,
+//            TokenValue, IncludeBlock, ExcludeBlock, MembershipPattern,
+//            KindFilter, PredicateFilter, PathPattern, MemberSet, Rule,
+//            Selector, TypeSelector, DealIdRef, DealConnectRef,
+//            DeclarationBlock, Declaration, Value, Point          (21)
+//   Helper:  _DealviewContent, _BuiltinSlot, _ColorVariant,
+//            _MembershipBlock, _PathStep, _PathTerminal,
+//            _AttributeSelector, _SignedNumber                     (8)
+//   Imported from deal.ebnf: HeaderBlock, Expression
+//   Micro-grammars (inside STRING_LITERAL content): DealIdRef,
+//            DealConnectRef
+//
+// ── LL(1) verification ────────────────────────────────────────────────
+//   _DealviewContent:    view/tokens/include/exclude/"["/VIEW_IDENT — disjoint
+//   MembershipPattern:   kind/filter/other — disjoint at first token
+//   _PathStep vs _PathTerminal (after "."): VIEW_IDENT|"*" vs "**"|"{"
+//                        — disjoint (DOUBLE_STAR by longest match)
+//   TokenValue:          base|accent|muted vs light|dark — disjoint
+//   Selector:            VIEW_IDENT vs "[" — disjoint
+//   Value:               '"' / -|digit / bool / "#" / "(" / VIEW_IDENT
+//                        — disjoint
+//   DeclarationBlock:    Value+ bounded by ";"|"}" (neither starts a Value)
+//   → LL(1) at every alternation; no left recursion anywhere.
+//
+// ── No-fabrication check (GV-13, ADR verification item 11) ────────────
+//   Structural: no production in this file introduces a model element.
+//   Selectors and membership patterns are references; declarations and
+//   tokens are presentation state. Verified by inspection of all 29
+//   productions — none contains a definition keyword, a typing operator,
+//   or a structural-relationship operator.
+//
+// ── Showcase coverage (10/10 .dealview files) ─────────────────────────
+//   global.dealview         @header, tokens (slots + variants), 9 type rules,
+//                           4 attribute-refined rules
+//   vehicle.dealview        view block, include (**), 15 instance rules,
+//                           2 edge rules with waypoints
+//   traceability.dealview   kind() within ×2, exact paths, instance rules
+//   views/thermal.dealview  **, member sets ×2, exclude, view props
+//   views/icd.dealview      kind() within ×3, edge-labels, dangling-edges,
+//                           edge rule
+//   views/bdd.dealview      kind() within, exact path, layout: tree
+//   views/behaviors.dealview kind() within, exact paths
+//   views/use-cases.dealview kind() within, exact path
+//   variants/sedan.dealview  **, exact path, compartment property
+//   variants/performance.dealview  **, exact path, nested instance rules
+//   Not yet exercised by the corpus: PredicateFilter ("filter"), "*"
+//   one-level wildcard, "muted" slot, HEX_COLOR with 3/8 digits,
+//   negative coordinates. (GA4: corpus additions recommended.)
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// End of dealview.ebnf
+// ═══════════════════════════════════════════════════════════════════════════
+

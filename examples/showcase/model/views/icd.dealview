@@ -1,0 +1,72 @@
+@header {
+    path:       model/views/icd.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: Interface Control Document (ICD).
+ *
+ * Every cross-subsystem interface of the EVPlatform: subsystems as
+ * collapsed black boxes, all system-level connects rendered with
+ * their physical medium (via) and payload (carrying) as edge labels,
+ * plus the interface definition library as a reference column.
+ *
+ * The thermal view is one slice of this; the ICD is the complete
+ * interface picture — electrical, CAN, thermal, mechanical.
+ */
+
+view {
+    title: "EV Platform — Interface Control (ICD)";
+    viewpoint: interface;
+    direction: left-to-right;
+    edge-labels: via carrying;      // show medium + payload on connects
+    dangling-edges: hide;           // boundary is the system: nothing dangles
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+// Subsystems collapsed (black boxes — internals are not ICD scope),
+// plus the interface/connection/flow definition library.
+
+include {
+    model.EVPlatform.EnergyStorage;
+    model.EVPlatform.Propulsion;
+    model.EVPlatform.Thermal;
+    model.EVPlatform.Drivetrain;
+    model.EVPlatform.vehicleCAN;
+
+    kind(connection_def) within interfaces.connections;    // HVDCCable, CANHarness, ...
+    kind(flow_def) within interfaces.connections;           // PowerDelivery, CoolantCirculation, ...
+    kind(port_def) within interfaces;                        // HVDCPort, CoolantPort, ...
+}
+
+// ─── Layout ─────────────────────────────────────────────────────
+// Subsystem black boxes left, definition library as reference
+// column right. Unpinned defs auto-flow within their column.
+
+[deal-id="model.EVPlatform.EnergyStorage"] { x: 60;  y: 80;  w: 220; h: 90;  collapsed: true; }
+[deal-id="model.EVPlatform.Propulsion"]    { x: 420; y: 80;  w: 220; h: 90;  collapsed: true; }
+[deal-id="model.EVPlatform.Drivetrain"]    { x: 420; y: 260; w: 220; h: 90;  collapsed: true; }
+[deal-id="model.EVPlatform.Thermal"]       { x: 60;  y: 260; w: 220; h: 90;  collapsed: true; }
+[deal-id="model.EVPlatform.vehicleCAN"]    { x: 240; y: 430; w: 220; h: 64; }
+
+// Reference column — interface definition library
+[deal-id="interfaces.connections.HVDCCable"]    { x: 760; y: 60;  }
+[deal-id="interfaces.connections.CANHarness"]   { x: 760; y: 140; }
+[deal-id="interfaces.connections.CoolantHose"]  { x: 760; y: 220; }
+[deal-id="interfaces.connections.DriveShaft"]   { x: 760; y: 300; }
+
+[deal-id="interfaces.connections.PowerDelivery"]      { x: 980; y: 60;  }
+[deal-id="interfaces.connections.CANMessages"]        { x: 980; y: 140; }
+[deal-id="interfaces.connections.CoolantCirculation"] { x: 980; y: 220; }
+[deal-id="interfaces.connections.TorqueTransmission"] { x: 980; y: 300; }
+
+// ─── Edge routing ───────────────────────────────────────────────
+
+[deal-connect="EnergyStorage.hvPowerOut -> Propulsion.hvPowerIn"] {
+    waypoints: (280, 110) (420, 110);
+}

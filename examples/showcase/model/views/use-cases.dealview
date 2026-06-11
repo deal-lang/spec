@@ -1,0 +1,42 @@
+@header {
+    path:       model/views/use-cases.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: use cases.
+ *
+ * All use case definitions with the EVPlatform as subject. Actor
+ * usages render inside their owning use case per the graphical
+ * notation; the kind() filter keeps new use cases joining
+ * automatically.
+ */
+
+view {
+    title: "EV Platform — Use Cases";
+    viewpoint: use-case;
+    direction: left-to-right;
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+
+include {
+    kind(use_case) within use_cases;
+    model.EVPlatform;                   // subject (collapsed)
+}
+
+// ─── Layout ─────────────────────────────────────────────────────
+// Driving scenarios top row, charging scenarios bottom row,
+// subject anchored left.
+
+[deal-id="model.EVPlatform"] { x: 40; y: 200; w: 200; h: 80; collapsed: true; }
+
+[deal-id="use_cases.driving.DailyCommute"]      { x: 340; y: 60;  }
+[deal-id="use_cases.driving.LongDistanceTrip"]  { x: 640; y: 60;  }
+[deal-id="use_cases.charging.DCFastCharge"]     { x: 340; y: 320; }
+[deal-id="use_cases.charging.ColdWeatherCharge"] { x: 640; y: 320; }

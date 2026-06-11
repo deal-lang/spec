@@ -1,0 +1,89 @@
+# Simulation Registry
+# Maps @simulation annotations to executable code.
+#
+# Commands:
+#   deal simulate <name>              Run a specific simulation
+#   deal simulate --all               Run all simulations
+#   deal simulate --stale             Run only stale (model changed since last run)
+#   deal check --simulations          Validate bindings without running
+#   deal check --verify --run-sims    Run stale sims then evaluate criteria
+
+[simulations.battery_thermal]
+tool = "python"
+entry = "thermal/battery_thermal.py"
+class = "BatteryThermal"
+binds_to = "packages/vehicle/battery.deal::BatteryPack"
+annotation = "@simulation:<<computes>> thermalProfile"
+inputs = [
+    { model_path = "EnergyStorage.battery.packResistance", param = "packResistance", unit = "ohm" },
+    { model_path = "EnergyStorage.battery.totalCurrent", param = "totalCurrent", unit = "A" },
+    { model_path = "Thermal.coolantSupply.flowRate", param = "coolantFlowRate", unit = "L/min" },
+]
+outputs = [
+    { param = "heatGenerated", model_path = "EnergyStorage.battery.heatGenerated", unit = "W" },
+    { param = "coolantOutTemp", model_path = "EnergyStorage.battery.coolantOut.coolantTemp", unit = "degC" },
+]
+
+[simulations.motor_thermal]
+tool = "python"
+entry = "thermal/motor_thermal.py"
+class = "MotorThermal"
+binds_to = "packages/vehicle/motor.deal::TractionMotor"
+annotation = "@simulation:<<computes>> thermalDerating"
+inputs = [
+    { model_path = "Propulsion.motor.windingResistance", param = "windingResistance", unit = "ohm" },
+    { model_path = "Propulsion.motor.magnetTemp", param = "magnetTemp", unit = "degC" },
+    { model_path = "Propulsion.motor.coolantIn.coolantTemp", param = "coolantInletTemp", unit = "degC" },
+]
+outputs = [
+    { param = "deratedPower", model_path = "Propulsion.motor.peakPower", unit = "kW" },
+]
+
+[simulations.motor_efficiency]
+tool = "matlab"
+entry = "dynamics/motor_efficiency.m"
+runner = "matlab -batch \"motor_efficiency\""
+binds_to = "packages/vehicle/motor.deal::TractionMotor"
+annotation = "@simulation:<<computes>> efficiencyMap"
+inputs = [
+    { model_path = "Propulsion.motor.peakTorque", param = "peakTorque", unit = "Nm" },
+    { model_path = "Propulsion.motor.maxSpeed", param = "maxSpeed", unit = "rpm" },
+]
+outputs = [
+    { param = "efficiencyMap", type = "dataset", format = "csv" },
+]
+
+[simulations.vehicle_dynamics]
+tool = "matlab"
+entry = "dynamics/vehicle_dynamics.m"
+runner = "matlab -batch \"vehicle_dynamics\""
+binds_to = "model/vehicle.dealx::EVPlatform"
+annotation = "@simulation:<<computes>> vehicleDynamics"
+inputs = [
+    { model_path = "Propulsion.motor.peakTorque", param = "peakTorque", unit = "Nm" },
+    { model_path = "Propulsion.gearbox.ratio", param = "gearRatio" },
+    { model_path = "EVPlatform.curbWeight", param = "vehicleMass", unit = "kg" },
+    { model_path = "Drivetrain.rearLeft.rollingResistance", param = "rollingResistance" },
+    { model_path = "Drivetrain.rearLeft.diameter", param = "wheelDiameter", unit = "m" },
+]
+outputs = [
+    { param = "zerotoSixty", model_path = "EVPlatform.zerotoSixty", unit = "s" },
+    { param = "quarterMile", unit = "s" },
+]
+
+[simulations.range_model]
+tool = "python"
+entry = "dynamics/range_model.py"
+class = "RangeModel"
+binds_to = "model/vehicle.dealx::EVPlatform"
+annotation = "@simulation:<<computes>> rangeEstimate"
+auto_run = true
+inputs = [
+    { model_path = "EnergyStorage.battery.usableCapacity", param = "batteryCapacity", unit = "kWh" },
+    { model_path = "EVPlatform.curbWeight", param = "vehicleMass", unit = "kg" },
+    { model_path = "Drivetrain.rearLeft.rollingResistance", param = "rollingResistance" },
+]
+outputs = [
+    { param = "totalRange", model_path = "EVPlatform.totalRange", unit = "km" },
+    { param = "energyConsumption", unit = "kWh/100km" },
+]

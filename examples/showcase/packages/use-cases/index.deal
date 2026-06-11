@@ -1,0 +1,13 @@
+@header {
+    path:       packages/use-cases/index.deal
+    schema:     deal/0.1
+    created:    2026-05-16T18:00:00Z by "David Dunnock"
+    modified:   2026-05-16T18:00:00Z by "David Dunnock"
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package use_cases;
+
+export driving.{LongDistanceTrip, DailyCommute};
+export charging.{DCFastCharge, ColdWeatherCharge};

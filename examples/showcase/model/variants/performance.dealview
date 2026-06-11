@@ -1,0 +1,53 @@
+@header {
+    path:       model/variants/performance.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: Performance variant (dual-motor AWD).
+ * Serves model/variants/performance.dealx by co-location.
+ *
+ * Shows the added FrontDrive subsystem in detail; the inherited
+ * base platform stays collapsed.
+ */
+
+view {
+    title: "Performance Variant — Dual Motor AWD";
+    viewpoint: structure;
+    direction: top-to-bottom;
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+
+include {
+    model.variants.PerformanceVariant.**;
+    model.EVPlatform;                   // collapsed base — specializes target
+}
+
+[deal-id="model.EVPlatform"] {
+    x: 140; y: 40; w: 260; h: 80;
+    collapsed: true;
+}
+
+[deal-id="model.variants.PerformanceVariant"] {
+    x: 60; y: 220; w: 440; h: 360;
+}
+
+// ─── FrontDrive subsystem (parent-relative) ─────────────────────
+
+[deal-id="model.variants.PerformanceVariant.FrontDrive"] {
+    x: 40; y: 80; w: 360; h: 240;
+}
+
+[deal-id="model.variants.PerformanceVariant.FrontDrive.frontInverter"] {
+    x: 30; y: 50; w: 180; h: 64;
+}
+
+[deal-id="model.variants.PerformanceVariant.FrontDrive.frontMotor"] {
+    x: 30; y: 144; w: 180; h: 72;
+}

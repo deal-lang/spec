@@ -1,0 +1,117 @@
+@header {
+    path:       model/vehicle.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: EV Platform system structure.
+ * Serves model/vehicle.dealx by co-location (GV-9) — no registration
+ * or import required; <name>.dealview beside <name>.dealx is the view
+ * for that composition file.
+ *
+ * Contains DELTAS from auto-layout only (GV-3): elements not listed
+ * here are auto-placed. Coordinates of contained elements are relative
+ * to their parent container, so moving a subsystem does not rewrite
+ * its children.
+ */
+
+view {
+    title: "EV Platform — System Structure";
+    viewpoint: structure;
+    grid: 20;
+    direction: left-to-right;
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+// Full structure view: the entire EVPlatform subtree. Connects are
+// included automatically when both endpoints are visible.
+// (Maps to SysML v2: expose model::EVPlatform::**)
+
+include {
+    model.EVPlatform.**;
+}
+
+// ─── Subsystem containers ───────────────────────────────────────
+// Energy flows left → right: storage → propulsion → drivetrain,
+// with thermal management below the power path.
+
+[deal-id="model.EVPlatform"] {
+    x: 40; y: 40; w: 1280; h: 760;
+}
+
+[deal-id="model.EVPlatform.EnergyStorage"] {
+    x: 60; y: 80; w: 320; h: 280;
+}
+
+[deal-id="model.EVPlatform.Propulsion"] {
+    x: 480; y: 80; w: 340; h: 360;
+}
+
+[deal-id="model.EVPlatform.Drivetrain"] {
+    x: 920; y: 80; w: 300; h: 200;
+    collapsed: true;            // wheels + frame hidden at this zoom
+}
+
+[deal-id="model.EVPlatform.Thermal"] {
+    x: 480; y: 480; w: 340; h: 240;
+}
+
+[deal-id="model.EVPlatform.vehicleCAN"] {
+    x: 60; y: 640; w: 320; h: 64;
+}
+
+// ─── Components within EnergyStorage (parent-relative) ──────────
+
+[deal-id="model.EVPlatform.EnergyStorage.battery"] {
+    x: 40; y: 60; w: 240; h: 96;
+}
+
+[deal-id="model.EVPlatform.EnergyStorage.bms"] {
+    x: 40; y: 180; w: 180; h: 64;
+}
+
+// ─── Components within Propulsion (parent-relative) ─────────────
+
+[deal-id="model.EVPlatform.Propulsion.inverter"] {
+    x: 40; y: 56; w: 180; h: 64;
+}
+
+[deal-id="model.EVPlatform.Propulsion.motor"] {
+    x: 40; y: 150; w: 180; h: 72;
+}
+
+[deal-id="model.EVPlatform.Propulsion.gearbox"] {
+    x: 40; y: 250; w: 180; h: 56;
+}
+
+// ─── Components within Thermal (parent-relative) ────────────────
+
+[deal-id="model.EVPlatform.Thermal.pump"] {
+    x: 30; y: 50; w: 130; h: 56;
+}
+
+[deal-id="model.EVPlatform.Thermal.heatEx"] {
+    x: 190; y: 50; w: 130; h: 56;
+}
+
+[deal-id="model.EVPlatform.Thermal.reservoir"] {
+    x: 110; y: 150; w: 130; h: 56;
+}
+
+// ─── Edge routing overrides ─────────────────────────────────────
+// Connects are selected by endpoint pair (DV-2, locked in
+// spec/grammar/dealview.ebnf): [deal-connect="from -> to"] where the
+// string content follows the DealConnectRef micro-grammar.
+
+[deal-connect="EnergyStorage.hvPowerOut -> Propulsion.hvPowerIn"] {
+    waypoints: (380, 188) (480, 188);
+}
+
+[deal-connect="Thermal.coolantSupply -> EnergyStorage.coolantIn"] {
+    waypoints: (480, 580) (400, 580) (400, 392) (300, 392) (300, 360);
+}

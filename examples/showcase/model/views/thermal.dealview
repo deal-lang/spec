@@ -1,0 +1,66 @@
+@header {
+    path:       model/views/thermal.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * View: thermal management — cross-subsystem coolant loop.
+ *
+ * NOT co-located: this view cuts across three subsystems of
+ * model/vehicle.dealx and is registered explicitly in deal.toml
+ * [views]. It demonstrates the GV-13 contract:
+ *
+ *   - curated subset (membership, not the whole file)
+ *   - cross-cutting content (Thermal + ports from two other subsystems)
+ *   - exclude trimming detail irrelevant to this viewpoint
+ *   - stubs for edges leaving the view
+ *
+ * A view can never show what the model doesn't contain — every
+ * pattern below must resolve against the IR (`deal check --views`).
+ */
+
+view {
+    title: "Thermal Management — Coolant Loop";
+    viewpoint: thermal;
+    direction: left-to-right;
+    dangling-edges: stub;       // power/CAN edges leaving the view get stubs
+}
+
+// ─── Membership (GV-13) ─────────────────────────────────────────
+// The thermal subsystem in full, plus ONLY the coolant ports of the
+// other two subsystems — their internals stay out of this view.
+
+include {
+    model.EVPlatform.Thermal.**;
+    model.EVPlatform.EnergyStorage.{coolantIn, coolantOut};
+    model.EVPlatform.Propulsion.{coolantIn, coolantOut};
+}
+
+exclude {
+    model.EVPlatform.Thermal.reservoir;     // internal plumbing detail —
+                                            // supply/return is the story here
+}
+
+// ─── Layout (deltas from auto-layout) ───────────────────────────
+
+[deal-id="model.EVPlatform.Thermal"] {
+    x: 60; y: 220; w: 360; h: 200;
+}
+
+[deal-id="model.EVPlatform.Thermal.pump"] {
+    x: 30; y: 60; w: 140; h: 56;
+}
+
+[deal-id="model.EVPlatform.Thermal.heatEx"] {
+    x: 200; y: 60; w: 140; h: 56;
+}
+
+[deal-id="model.EVPlatform.EnergyStorage.coolantIn"]  { x: 540; y: 120; }
+[deal-id="model.EVPlatform.EnergyStorage.coolantOut"] { x: 540; y: 180; }
+[deal-id="model.EVPlatform.Propulsion.coolantIn"]     { x: 540; y: 300; }
+[deal-id="model.EVPlatform.Propulsion.coolantOut"]    { x: 540; y: 360; }

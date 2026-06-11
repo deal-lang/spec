@@ -1,0 +1,150 @@
+@header {
+    path:       model/global.dealview
+    schema:     dealview/0.1
+    created:    2026-06-06T00:00:00Z by "David Dunnock"
+    modified:   2026-06-06T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * EV Platform — workspace theme (GV-9 theme layer).
+ *
+ * Type-level defaults for every view in this workspace. Per-view
+ * .dealview files (co-located with their .dealx source) override
+ * these rules with instance geometry — the cascade is:
+ *
+ *   auto-layout  <  global.dealview (type rules)  <  <view>.dealview (instance rules)
+ *
+ * This file contains NO positions. Geometry is view state and lives
+ * in the per-view files; this file is house style only.
+ *
+ * Dependency direction is one-way: views read the model; .deal/.dealx
+ * files never reference this file. Deleting any .dealview must never
+ * affect `deal build`.
+ */
+
+// ─── Semantic color tokens ──────────────────────────────────────
+// Three-layer resolution chain (CSS-custom-property analogy):
+//
+//   rule (`stroke: power`)
+//     → workspace token (this block)
+//       → BUILT-IN SLOT (`base`, `accent`, `muted` — the normative
+//         vocabulary every renderer provides, resolved against the
+//         active editor theme), or
+//       → LITERAL with light()/dark() variants, resolved against
+//         the active color mode.
+//
+// Rules below reference workspace tokens only — never raw values.
+
+tokens {
+    // Aliases of built-in theme slots — follow the editor theme
+    surface:    base;
+    emphasis:   accent;
+
+    // Domain colors — workspace-defined literals, per color mode
+    power:      light(#B45309) dark(#F59E0B);   // energy / HV power
+    thermal:    light(#0E7490) dark(#22D3EE);   // coolant / heat
+    data:       light(#475569) dark(#94A3B8);   // CAN / signals
+    mechanical: light(#57534E) dark(#A8A29E);   // shafts / structure
+    trace:      light(#6D28D9) dark(#A78BFA);   // traceability links
+}
+
+// ─── Composition element defaults ───────────────────────────────
+
+system {
+    fill: surface;
+    stroke: emphasis;
+    stroke-width: 2;
+    corner-radius: 10;
+    min-w: 280;
+    min-h: 160;
+    title-compartment: visible;
+}
+
+subsystem {
+    fill: surface;
+    stroke: emphasis;
+    stroke-width: 1.5;
+    corner-radius: 8;
+    min-w: 220;
+    min-h: 120;
+}
+
+component {
+    fill: surface;
+    stroke: mechanical;
+    stroke-width: 1;
+    corner-radius: 6;
+    min-w: 160;
+    min-h: 56;
+    attributes-compartment: collapsed;
+}
+
+port {
+    shape: square;
+    size: 10;
+    stroke: data;
+}
+
+// ─── Connection defaults, refined by carried interface ──────────
+// Attribute-selector refinement: the cascade applies the generic
+// connect rule first, then the carrying-specific override.
+
+connect {
+    routing: orthogonal;
+    stroke: data;
+    stroke-width: 1;
+}
+
+connect[carrying="PowerDelivery"] {
+    stroke: power;
+    stroke-width: 2.5;
+}
+
+connect[carrying="CoolantCirculation"] {
+    stroke: thermal;
+    stroke-width: 2;
+}
+
+connect[carrying="CANMessages"] {
+    stroke: data;
+    line-style: dashed;
+}
+
+connect[carrying="TorqueTransmission"] {
+    stroke: mechanical;
+    stroke-width: 3;
+}
+
+// ─── Traceability element defaults ──────────────────────────────
+
+need {
+    fill: surface;
+    stroke: trace;
+    corner-radius: 14;
+    min-w: 180;
+}
+
+requirement {
+    fill: surface;
+    stroke: trace;
+    stroke-width: 1.5;
+    corner-radius: 4;
+    min-w: 200;
+}
+
+allocate {
+    routing: straight;
+    stroke: trace;
+    line-style: dashed;
+    arrowhead: open;
+}
+
+satisfy {
+    routing: straight;
+    stroke: trace;
+    stroke-width: 2;
+    arrowhead: filled;
+}

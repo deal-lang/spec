@@ -1,0 +1,874 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// DEAL Lexical Grammar — lexical.ebnf
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Language:  DEAL — Digital Engineering Authoring Language
+// Version:   0.1.0-draft
+// Notation:  W3C EBNF (XML 1.0 Fifth Edition §6)
+// Status:    Phase 2 of grammar-architect workflow
+//
+// This file defines all tokens shared by both the .deal (definition)
+// and .dealx (composition) parsers. The lexer switches mode based on
+// file extension, but all token types are defined here.
+//
+// Design decisions implemented: LM-1, LM-2, LM-3, SD-3, SD-5, SD-10,
+//   SD-11, SD-12, CS-2, NC-1
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 1: Foundation Tokens
+// Design decisions: (none — universal language infrastructure)
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Any legal Unicode scalar value in DEAL source.
+ * Based on W3C XML 1.0 Char production.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: any Unicode scalar value
+ * Normalization: transparent
+ */
+AnyChar ::=
+    #x9
+    | #xA
+    | #xD
+    | [#x20-#xD7FF]
+    | [#xE000-#xFFFD]
+    | [#x10000-#x10FFFF]
+
+/**
+ * Line terminator — all platform conventions.
+ * The lexer normalizes all forms to LF internally.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: #xD, #xA
+ * Normalization: transparent
+ */
+NL ::=
+    #xA
+    | #xD #xA
+    | #xD
+
+/**
+ * Whitespace — skipped between tokens by the lexer.
+ * Exceptions: preserved inside string literals and comments.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: #x20, #x9, #xA, #xD
+ * Normalization: transparent
+ */
+WS ::=
+    ( #x20 | #x9 | NL )+
+
+/**
+ * End of input stream.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Normalization: transparent
+ */
+EOF ::=
+    /* emitted by lexer at end of input */
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 2: Comments
+// Design decisions: SD-11, LM-2
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Single-line comment — from // to end of line.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: SD-11
+ * FIRST tokens: "//"
+ * Normalization: transparent — not in AST (unless retained for formatting)
+ *
+ * Showcase: every .deal and .dealx file uses these
+ */
+SINGLE_LINE_COMMENT ::=
+    "//" ( AnyChar - NL )*
+
+/**
+ * Block comment - from slash-star to star-slash. Does NOT nest.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: SD-11
+ * FIRST tokens: "/*" (but NOT "/**")
+ * Normalization: transparent
+ * Ambiguity: Disambiguated from DOC_COMMENT by third character.
+ *   "/*" followed by anything other than "*" → BLOCK_COMMENT
+ *   "/**" → DOC_COMMENT
+ *   "/***..." → DOC_COMMENT (any number of stars after /**)
+ *
+ * Showcase: packages/requirements/system.deal uses block comments for section headers
+ */
+BLOCK_COMMENT ::=
+    "/*" ( AnyChar - "*/" )* "*/"
+
+/**
+ * JSDoc-style doc comment - from slash-star-star to star-slash.
+ * Generates documentation.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: LM-2, SD-11, SD-16
+ * FIRST tokens: "/**"
+ * Normalization: DocComment AST node — attached to following element
+ * Ambiguity: Distinguished from BLOCK_COMMENT by "/**" prefix.
+ *   The lexer checks the longest valid doc-comment form first.
+ *   Edge case: slash-star-star-slash is a BLOCK_COMMENT with "*" as body.
+ *   Edge case: slash-star-star-star-slash is a DOC_COMMENT with an empty body.
+ *
+ * Showcase: packages/vehicle/battery.deal, motor.deal, vehicle.dealx
+ *
+ * @see tags within doc comments are parsed as structured content:
+ *   @see, @param, @returns — following JSDoc conventions per LM-1
+ */
+DOC_COMMENT ::=
+    "/**" ( AnyChar - "*/" )* "*/"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 3: Identifiers and Names
+// Design decisions: (language infrastructure, informed by SysML v2 KEBNF)
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Basic identifier — starts with letter or underscore.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: [a-zA-Z_]
+ * Normalization: transparent — becomes IDENT token
+ *
+ * Collision note: Globally reserved keywords shadow identifiers — if an
+ * IDENT matches one, the keyword token is emitted instead. Contextual
+ * names in Section 5 remain IDENT outside their owning grammar context.
+ */
+IDENT ::=
+    IDENT_START IDENT_PART*
+
+IDENT_START ::=
+    [a-zA-Z_]
+
+IDENT_PART ::=
+    [a-zA-Z0-9_]
+
+/**
+ * Unrestricted name — single-quoted identifier.
+ * Allows keywords and special characters as names.
+ * Uses single quotes per SysML v2 convention for unrestricted names.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: "'"
+ * Normalization: transparent — becomes IDENT token with unrestricted flag.
+ * The parser accepts it anywhere an IDENT is expected.
+ *
+ * Example: 'use case' as an element name (normally a compound construct)
+ * Note: Single quotes for unrestricted names are distinct from single
+ * quotes as string literal aliases (context determines meaning).
+ * In practice, unrestricted names are rare — most identifiers are basic.
+ */
+UNRESTRICTED_NAME ::=
+    "'" ( AnyChar - ( "'" | NL ) | ESCAPE_SEQUENCE )* "'"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 4: Literals
+// Design decisions: LM-3, SD-12, SD-13
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Integer literal — decimal digits.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: (infrastructure)
+ * FIRST tokens: [0-9]
+ * Normalization: IntegerLiteral AST node
+ * Ambiguity: Distinguished from REAL_LITERAL by absence of "."
+ *   Lexer rule: if digits followed by "." followed by digits → REAL_LITERAL
+ *   Otherwise → INTEGER_LITERAL
+ */
+INTEGER_LITERAL ::=
+    [0-9]+
+
+/**
+ * Real number literal — decimal with fractional part.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: [0-9]
+ * Normalization: RealLiteral AST node
+ * Ambiguity: Consumed greedily. "3.14" → one REAL_LITERAL, not INTEGER "3" DOT "14"
+ *   The lexer looks ahead after digits: if "." followed by digit → REAL_LITERAL
+ */
+REAL_LITERAL ::=
+    [0-9]+ "." [0-9]+ ( ( "e" | "E" ) ( "+" | "-" )? [0-9]+ )?
+
+/**
+ * String literal — double-quoted. Primary string form per LM-3.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: LM-3, SD-12
+ * FIRST tokens: '"'
+ * Normalization: StringLiteral AST node
+ *
+ * Showcase: used extensively — attribute values, requirement text
+ */
+STRING_LITERAL ::=
+    '"' ( STRING_CHAR | ESCAPE_SEQUENCE )* '"'
+
+STRING_CHAR ::=
+    AnyChar - ( '"' | "\\" | NL )
+
+/**
+ * Single-quoted string — alias for double-quoted per LM-3.
+ * `deal fmt` normalizes to double-quoted.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: LM-3
+ * FIRST tokens: "'"
+ * Normalization: StringLiteral AST node (same as STRING_LITERAL)
+ *
+ * Collision note: Single quotes are also used for UNRESTRICTED_NAME.
+ * Disambiguation: In contexts where a string literal is expected
+ * (after "=", in attribute values, in annotation values), single
+ * quotes produce a string. In contexts where a name is expected
+ * (after "part", "attribute", etc.), single quotes produce an
+ * unrestricted name. The PARSER resolves this, not the lexer.
+ * The scanner uses the same character pattern as UNRESTRICTED_NAME.
+ * Parser context determines whether the token is normalized as a string
+ * literal or an unrestricted name.
+ */
+SINGLE_QUOTED_STRING ::=
+    "'" ( AnyChar - ( "'" | "\\" | NL ) | ESCAPE_SEQUENCE )* "'"
+
+/**
+ * Template literal — backtick-delimited with ${} interpolation.
+ * Supports multi-line content per LM-3.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: LM-3, SD-12
+ * FIRST tokens: "`"
+ * Normalization: TemplateLiteral AST node with parts array
+ *
+ * The lexer emits this as a sequence of tokens:
+ *   TEMPLATE_HEAD  — from ` to first ${
+ *   expression tokens — the interpolated expression
+ *   TEMPLATE_MIDDLE — from } to next ${
+ *   expression tokens — next interpolated expression
+ *   TEMPLATE_TAIL — from } to closing `
+ *
+ * For templates without interpolation, emits a single TEMPLATE_LITERAL.
+ *
+ * Showcase: packages/vehicle/motor.deal (powerDensity), model/variants/performance.dealx (@concerns)
+ */
+TEMPLATE_HEAD ::=
+    "`" TEMPLATE_CHARS* "${"
+
+TEMPLATE_MIDDLE ::=
+    "}" TEMPLATE_CHARS* "${"
+
+TEMPLATE_TAIL ::=
+    "}" TEMPLATE_CHARS* "`"
+
+TEMPLATE_LITERAL ::=
+    "`" TEMPLATE_CHARS* "`"
+
+TEMPLATE_CHARS ::=
+    AnyChar - ( "`" | "${" | "\\" )
+    | ESCAPE_SEQUENCE
+    | "$" ( AnyChar - "{" )
+
+/**
+ * Boolean literal.
+ *
+ * Layer: L1 | Marker: [ext]
+ * FIRST tokens: "true", "false"
+ * Normalization: BooleanLiteral AST node
+ *
+ * Collision note: "true" and "false" are reserved words, but the lexer
+ * emits BOOLEAN_LITERAL for them rather than keyword tokens.
+ */
+BOOLEAN_LITERAL ::=
+    "true" | "false"
+
+/**
+ * Escape sequences within strings and templates.
+ *
+ * Layer: L1 | Marker: [ext]
+ */
+ESCAPE_SEQUENCE ::=
+    "\\" ( '"' | "'" | "\\" | "n" | "r" | "t" | "0" | "`" | "$" )
+    | "\\u{" [0-9a-fA-F]+ "}"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 5: Keywords
+// Design decisions: SD-1, SD-7, SD-8, SD-9, SD-18, SD-20
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+//
+// This section records keyword spellings and contextual name spellings.
+// Globally reserved keywords are checked before emitting IDENT. Contextual
+// names are recognized only in the grammar mode that owns them; otherwise
+// they remain ordinary identifiers.
+//
+// Organized by category for readability. Only the globally reserved
+// categories form the flat reserved namespace.
+// ─────────────────────────────────────────────────────────────────────────
+
+// --- Element keywords (SD-1, SD-18) ---
+// Used as: keyword "def" for definitions, keyword alone for usages
+//
+// KW_PART          "part"
+// KW_PORT          "port"
+// KW_ACTION        "action"
+// KW_STATE         "state"
+// KW_ATTRIBUTE     "attribute"
+// KW_ITEM          "item"
+// KW_INTERFACE     "interface"
+// KW_CONNECTION    "connection"
+// KW_FLOW          "flow"
+// KW_ALLOCATION    "allocation"
+// KW_REQUIREMENT   "requirement"
+// KW_CONSTRAINT    "constraint"
+// KW_NEED          "need"
+// KW_CALC          "calc"
+// KW_DEF           "def"
+//
+// Compound syntax: "use" + "case"
+// The lexer emits "use" and "case" separately. The parser recognizes
+// the pair as the `use case` construct.
+// KW_USE           "use"
+// KW_CASE          "case"
+
+// --- Modifier keywords (SD-7) ---
+// KW_ABSTRACT      "abstract"
+// KW_DERIVED       "derived"
+// KW_READONLY      "readonly"
+// KW_ORDERED       "ordered"
+// KW_NONUNIQUE     "nonunique"
+// KW_INDIVIDUAL    "individual"
+// KW_VARIATION     "variation"
+// KW_PORTION       "portion"
+// KW_END           "end"
+// KW_REF           "ref"
+
+// --- Direction keywords (SD-8) ---
+// KW_IN            "in"
+// KW_OUT           "out"
+// KW_INOUT         "inout"
+
+// --- Visibility keywords (SD-9) ---
+// KW_PUBLIC        "public"
+// KW_PROTECTED     "protected"
+// KW_PRIVATE       "private"
+
+// --- Module keywords (PS-2, PS-3, PS-4) ---
+// KW_PACKAGE       "package"
+// KW_IMPORT        "import"
+// KW_EXPORT        "export"
+// KW_AS            "as"
+
+// --- Requirement/use-case body keywords (SD-18, SD-20) ---
+// KW_ACTOR         "actor"
+// KW_SUBJECT       "subject"
+// KW_PRECONDITION  "precondition"
+// KW_POSTCONDITION "postcondition"
+// KW_VERIFICATION  "verification"
+// KW_ACCEPTS       "accepts"
+// KW_REJECTS       "rejects"
+// KW_THRESHOLD     "threshold"
+// KW_OPERATOR      "operator"
+// KW_CONDITIONS    "conditions"
+
+// --- Calculation / constraint body keywords (SD-21, SD-22) ---
+// KW_RETURN        "return"   calc result statement (global)
+// KW_REQUIRE       "require"  constraint invariant statement (global)
+
+// --- Precision keywords (SD-23) ---
+// KW_SIG           "sig"      significant-figures precision; contextual —
+//                             only reserved inside a "=>" return contract.
+
+// --- Composition tag names (contextual in .dealx within [< >] tags) ---
+// These are NOT globally reserved in .deal files — they're tag names in .dealx.
+// KW_SYSTEM        "system"
+// KW_SUBSYSTEM     "subsystem"
+// KW_CONNECT       "connect"
+// KW_EXPOSE        "expose"
+// KW_TRACEABILITY  "traceability"
+// KW_SATISFY       "satisfy"
+// KW_VALIDATE      "validate"
+// KW_ALLOCATE      "allocate"
+
+// --- Composition attribute names (contextual in tag attributes) ---
+// KW_FROM          "from"
+// KW_TO            "to"
+// KW_VIA           "via"
+// KW_CARRYING      "carrying"
+// KW_METHOD        "method"
+// KW_STATUS        "status"
+// KW_RELATIONSHIP  "relationship"
+
+// --- Evidence/criteria names (contextual in [<satisfy>] bodies) ---
+// KW_CRITERIA      "criteria"
+// KW_EVIDENCE      "evidence"
+// KW_COMPUTE       "compute"
+// KW_MAPS          "maps"
+// KW_GAP           "gap"
+// KW_SIMULATION    "simulation"
+// KW_TEST          "test"
+// KW_ANALYSIS      "analysis"
+// KW_DESIGN        "design"
+// KW_INSPECTION    "inspection"
+// KW_DEMONSTRATION "demonstration"
+
+// --- Logical operators (in criteria expressions) ---
+// KW_AND           "AND"
+// KW_OR            "OR"
+// KW_NOT           "NOT"
+// KW_WHERE         "WHERE"
+
+// --- Boolean literals ---
+// true / false are emitted as BOOLEAN_LITERAL, not as keyword tokens.
+
+// --- Primitive type names ---
+// Boolean / Integer / Real / String are emitted as IDENT tokens.
+// The semantic analyzer resolves them as built-in types.
+
+// --- @header field keywords (FS-2) ---
+// These are contextual — only keywords inside @header blocks.
+// KW_PATH          "path"
+// KW_SCHEMA        "schema"
+// KW_CREATED       "created"
+// KW_MODIFIED      "modified"
+// KW_REVIEWED      "reviewed"
+// KW_HASH          "hash"
+// KW_BASELINE      "baseline"
+// KW_MARKING       "marking"
+// KW_BY            "by"
+
+/**
+ * Complete keyword/contextual-name enumeration.
+ * Total: 80 reserved or contextual spellings.
+ * (+4 over baseline 76: "calc", "return", "require" global; "sig" contextual — SD-21/22/23)
+ *
+ * Collision verification:
+ *   - No keyword is a prefix of another keyword that creates ambiguity
+ *     (e.g., "in" vs "inout" — lexer uses longest match)
+ *   - "use case" is parser-recognized as two adjacent keyword tokens
+ *   - @header field keywords are contextual (only reserved inside @header)
+ *   - Composition tag names are contextual (only reserved inside [< >])
+ *   - Boolean literals and primitive type names are not emitted through
+ *     this keyword table
+ */
+_Keyword ::=
+    "part" | "port" | "action" | "state" | "attribute" | "item"
+    | "interface" | "connection" | "flow" | "allocation"
+    | "requirement" | "constraint" | "need" | "def" | "calc"
+    | "use" | "case"
+    | "abstract" | "derived" | "readonly" | "ordered" | "nonunique"
+    | "individual" | "variation" | "portion" | "end" | "ref"
+    | "in" | "out" | "inout"
+    | "public" | "protected" | "private"
+    | "package" | "import" | "export" | "as"
+    | "actor" | "subject" | "precondition" | "postcondition"
+    | "verification" | "accepts" | "rejects" | "threshold"
+    | "operator" | "conditions"
+    | "return" | "require" | "sig"
+    | "system" | "subsystem" | "connect" | "expose"
+    | "traceability" | "satisfy" | "validate" | "allocate"
+    | "from" | "to" | "via" | "carrying"
+    | "method" | "status" | "relationship"
+    | "criteria" | "evidence" | "compute" | "maps" | "gap"
+    | "simulation" | "test" | "analysis" | "design"
+    | "inspection" | "demonstration"
+    | "AND" | "OR" | "NOT" | "WHERE"
+    | "path" | "schema" | "created" | "modified" | "reviewed"
+    | "hash" | "baseline" | "marking" | "by"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 6: Operators
+// Design decisions: SD-2, SD-3, SD-4, SD-5
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Double angle bracket delimited operator — DEAL's signature syntax.
+ * Lexer scans from << to >> and emits the contained text as the operator name.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: SD-3
+ * FIRST tokens: "<<"
+ * Normalization: transparent — produces DELIMITED_OPERATOR token
+ *
+ * Collision note: << and >> are NOT used as bitwise shift operators.
+ * Design decision SD-3 explicitly chose << >> as delimiters because
+ * DEAL excludes bitwise operators.
+ *
+ * Examples: <<specializes>>, <<redefines>>, <<allocated to>>
+ */
+DELIMITED_OPERATOR ::=
+    "<<" OPERATOR_NAME ">>"
+
+OPERATOR_NAME ::=
+    ( [a-zA-Z] | " " )+
+
+/**
+ * Annotation category prefix — @category: before <<operator>>.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: SD-4, SD-6
+ * FIRST tokens: "@"
+ * Normalization: transparent — produces ANNOTATION_PREFIX token
+ *
+ * The lexer recognizes @word: as an annotation category prefix.
+ * Known categories: trace, connection, flow, behavioral, simulation,
+ *   state, temporal, set, requirement, document
+ *
+ * Showcase: used extensively in both .deal and .dealx files
+ */
+ANNOTATION_PREFIX ::=
+    "@" IDENT ":"
+
+/**
+ * Standalone annotation — @word without colon (not followed by <<).
+ * Used for: @confidence, @assumes, @concerns, @rationale, @header
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: SD-15, SD-16, FS-2
+ * FIRST tokens: "@"
+ * Normalization: transparent — produces ANNOTATION token
+ *
+ * Ambiguity: Resolved by lookahead after @IDENT:
+ *   @word ":" → ANNOTATION_PREFIX (category for <<operator>>)
+ *   @word (no colon, or colon is part of value) → ANNOTATION
+ *   @header → special: starts the header block
+ *
+ * Showcase: @confidence, @assumes, @concerns, @rationale in battery.deal
+ */
+ANNOTATION ::=
+    "@" IDENT
+
+// --- SysML v2 alias operators (SD-5) ---
+// Accepted by the lexer for import compatibility.
+// `deal fmt` normalizes these to DEAL canonical form.
+//
+// SYSML_SPECIALIZES   ":>"    → <<specializes>>
+// SYSML_REDEFINES     ":>>"   → <<redefines>>
+// SYSML_REFERENCES    "::>"   → <<references>>
+// SYSML_CONJUGATES    "~"     → <<conjugates>>
+//
+// Note: SysML v2 keyword aliases (satisfy, connect, allocate, etc.)
+// are already DEAL keywords and don't need separate alias tokens.
+
+// --- Typing operator (SD-2) ---
+
+/**
+ * Type annotation colon.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: SD-2
+ * FIRST tokens: ":"
+ * Normalization: transparent
+ *
+ * Ambiguity: ":" appears in multiple contexts:
+ *   part engine : Engine        → type annotation
+ *   @header { path: value }     → key-value separator
+ *   @trace:<<satisfies>>        → annotation category prefix
+ *
+ * The PARSER resolves context. The lexer emits a single COLON token.
+ * Exception: ":>" ":>>" "::>" are emitted as SysML alias tokens (SD-5).
+ */
+// COLON is a single character — defined in delimiters section
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 7: Delimiters and Punctuation
+// Design decisions: SD-10, CS-2
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+// --- Braces ---
+// LBRACE           "{"     Block open
+// RBRACE           "}"     Block close
+
+// --- Parentheses ---
+// LPAREN           "("     Grouping, function call, visibility wrapper
+// RPAREN           ")"     Close
+
+// --- Square brackets ---
+// LBRACKET         "["     Multiplicity open, array literal open
+// RBRACKET         "]"     Close
+
+// --- Composition tag delimiters (CS-2) ---
+// These are multi-character tokens recognized by the lexer.
+//
+// TAG_OPEN         "[<"    Opens a composition tag
+// TAG_SELF_CLOSE   "/>]"   Self-closing tag end
+// TAG_CLOSE_OPEN   "[</"   Opens a closing composition tag
+// TAG_CLOSE_END    ">]"    Closes a closing composition tag
+//
+// Collision analysis:
+//   "[<" — "[" followed by "<" — cannot collide with LBRACKET because
+//          LBRACKET is never followed by "<" in DEAL grammar
+//          (multiplicity uses digits/dots/asterisk after "[")
+//   "/>]" — "/" followed by ">" followed by "]" — unique sequence
+//   "[</" — "[" followed by "<" followed by "/" — unique sequence
+//   ">]" — ">" followed by "]" — cannot collide because ">" in
+//          comparison context is never followed by "]"
+//
+// The lexer uses longest match:
+//   "[" + "<" → TAG_OPEN (not LBRACKET + LESS_THAN)
+//   "[" + digit → LBRACKET (start of multiplicity)
+
+// --- Semicolons (SD-10) ---
+// SEMICOLON        ";"     Statement terminator
+
+// --- Commas ---
+// COMMA            ","     List separator
+
+// --- Dots ---
+// DOT              "."     Path separator, package separator
+// DOTDOT           ".."    Multiplicity range (1..5), relative import (..)
+//
+// Ambiguity: "." vs ".." — lexer uses longest match.
+//   "1..5" → INTEGER DOT DOT INTEGER? No — "1" ".." "5" since ".." is
+//   recognized as DOTDOT by longest match. This is correct for multiplicity.
+
+// --- Namespace ---
+// COLONCOLON       "::"    Namespace access (Vehicle::mass)
+//
+// Collision: "::" vs ":" — lexer uses longest match.
+//   "::" → COLONCOLON
+//   ":" followed by non-":" → COLON
+
+// --- Colon ---
+// COLON            ":"     Type annotation, key-value separator
+//
+// Collision with SysML v2 aliases:
+//   ":>" → SYSML_SPECIALIZES (longest match over COLON + GREATER_THAN)
+//   ":>>" → SYSML_REDEFINES (longest match)
+//   "::>" → SYSML_REFERENCES (longest match over COLONCOLON + GREATER_THAN)
+//   ":" alone → COLON
+
+// --- Assignment ---
+// EQUALS           "="     Value assignment
+// ARROW            "=>"    Satisfy return type arrow (CS-10)
+//
+// Collision: "=" vs "=>" — lexer uses longest match.
+//   "=>" → ARROW
+//   "=" followed by non-">" → EQUALS
+//
+// Collision: "==" (equality) vs "=" (assignment) vs "=>" (arrow)
+//   "==>" → EQUALS_EQUALS + ">" — but this never occurs in valid DEAL
+//   "==" → EQUALS_EQUALS
+//   "=>" → ARROW
+//   "=" → EQUALS
+
+// --- Comparison ---
+// GREATER_THAN     ">"     Comparison
+// LESS_THAN        "<"     Comparison
+// GREATER_EQUAL    ">="    Comparison
+// LESS_EQUAL       "<="    Comparison
+// EQUALS_EQUALS    "=="    Equality
+// NOT_EQUALS       "!="    Inequality
+//
+// Collision analysis with composition tags:
+//   "<" — standalone LESS_THAN is only emitted when NOT preceded by "["
+//   "[<" → TAG_OPEN by longest match (lexer checks for "[" + "<")
+//   ">" — standalone GREATER_THAN is only emitted when NOT followed by "]"
+//   ">]" → TAG_CLOSE_END by longest match
+//   ">>" — part of DELIMITED_OPERATOR close, never standalone comparison
+
+// --- Arithmetic ---
+// PLUS             "+"     Addition
+// MINUS            "-"     Subtraction / negation
+// STAR             "*"     Multiplication / glob import / zero-or-more multiplicity
+// SLASH            "/"     Division
+//
+// Collision: STAR in multiplicity [*] vs glob import * vs multiplication
+//   Context resolves: after "[" → multiplicity; after "." → glob; in expr → multiply
+
+// --- Plus-minus (precision tolerance, SD-23) ---
+// PLUS_MINUS       "±"     Tolerance marker in a "=>" return contract.
+//                          ASCII input alias "+/-" is accepted by the lexer and
+//                          normalized to "±" by `deal fmt` (SD-5 alias pattern).
+//
+// Collision: "+/-" vs PLUS "+" then SLASH "/" then MINUS "-" — the lexer
+//   recognizes the 3-char sequence "+/-" as PLUS_MINUS only in a precision
+//   context (immediately after ARROW "=>" or a "," in a ReturnContract list);
+//   elsewhere "+" , "/" , "-" lex as their individual arithmetic tokens.
+//   The literal "±" (U+00B1) is unambiguous and always lexes to PLUS_MINUS.
+
+// --- Path arrow (reserved) ---
+// THIN_ARROW       "->"    Connect shorthand, evidence maps
+//
+// Collision: "->" vs MINUS + GREATER_THAN — longest match picks THIN_ARROW
+
+// --- At sign ---
+// AT               "@"     Annotation prefix
+// Already handled by ANNOTATION and ANNOTATION_PREFIX in Section 6.
+// The lexer checks: "@" followed by IDENT followed by ":" → ANNOTATION_PREFIX
+// Otherwise "@" followed by IDENT → ANNOTATION
+
+// --- Template interpolation ---
+// TEMPLATE_INTERP_START  "${"   Start of template interpolation
+// Handled within TEMPLATE_HEAD/MIDDLE/TAIL in Section 4.
+
+/**
+ * Complete delimiter and punctuation summary.
+ * Total: 29 delimiter/punctuation tokens (+1: PLUS_MINUS "±", SD-23).
+ */
+_Delimiters ::=
+    "{" | "}" | "(" | ")" | "[" | "]"
+    | "[<" | "/>]" | "[</" | ">]"
+    | ";" | "," | "." | ".." | "::" | ":"
+    | "=" | "=>"
+    | ">" | "<" | ">=" | "<=" | "==" | "!="
+    | "+" | "-" | "*" | "/"
+    | "->" | "±"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 8: SysML v2 Alias Tokens (SD-5)
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * SysML v2 symbolic operators accepted for import compatibility.
+ * `deal fmt` normalizes these to DEAL <<operator>> form.
+ *
+ * Design decisions: SD-5
+ * These are recognized by the lexer and emitted as their DEAL equivalents.
+ *
+ * Lexer longest-match ordering:
+ *   "::>" → SYSML_REFERENCES (3 chars)
+ *   ":>>" → SYSML_REDEFINES (3 chars)
+ *   ":>"  → SYSML_SPECIALIZES (2 chars)
+ *   "::"  → COLONCOLON (2 chars)
+ *   ":"   → COLON (1 char)
+ */
+SYSML_SPECIALIZES ::= ":>"
+SYSML_REDEFINES   ::= ":>>"
+SYSML_REFERENCES  ::= "::>"
+SYSML_CONJUGATES  ::= "~"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 9: View Mode Tokens (.dealview)
+// Design decisions: GV-9, DV-1
+// Layer: L1
+// ─────────────────────────────────────────────────────────────────────────
+//
+// The .dealview view-sidecar grammar (GV-9) is the third extension-selected
+// grammar mode. These tokens are MODE-SCOPED: the lexer emits them only
+// when lexing a .dealview file, exactly as the composition tag delimiters
+// in Section 7 are only meaningful to the .dealx parser. .deal and .dealx
+// lexing is completely unaffected by this section.
+//
+// In .dealview mode, NO model keywords from Section 5 are reserved.
+// Block names (view, tokens, include, exclude), pattern operators (kind,
+// within, filter), color-mode functions (light, dark), and built-in slot
+// names (base, accent, muted) are contextual — recognized positionally
+// by the parser, ordinary VIEW_IDENTs everywhere else. This is what lets
+// `edge-labels: via carrying;` use the spellings "via" and "carrying"
+// as plain property values.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * View-mode identifier — IDENT extended with internal hyphens.
+ * Covers the CSS-shaped property vocabulary (stroke-width, corner-radius,
+ * min-w, dangling-edges) and hyphenated value idents (left-to-right).
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: DV-1, GV-2 (CSS-shaped sidecar)
+ * FIRST tokens: [a-zA-Z_]
+ * Normalization: transparent — becomes VIEW_IDENT token
+ *
+ * In .dealview mode, VIEW_IDENT is emitted wherever .deal mode would
+ * emit IDENT; a hyphen-free VIEW_IDENT is lexically identical to IDENT.
+ *
+ * Collision analysis:
+ *   - A hyphen must be followed by an IDENT_PART, so a trailing "-"
+ *     is never consumed ("x-" lexes as VIEW_IDENT "x" + MINUS).
+ *   - SUBTRACTION RULE (DV-1): inside `filter` predicate expressions,
+ *     binary minus REQUIRES surrounding whitespace ("a - b"); "a-b" is
+ *     one VIEW_IDENT. Same rule CSS uses for calc() identifiers. This
+ *     is the only place .dealview mode admits arithmetic, so the rule
+ *     is local and checkable.
+ *   - Unary minus on numbers ("-12") is unaffected: "-" followed by a
+ *     digit is never part of a VIEW_IDENT.
+ *
+ * Showcase: model/global.dealview:L58 (stroke-width), L62 (corner-radius),
+ *   model/vehicle.dealview:L27 (left-to-right)
+ */
+VIEW_IDENT ::=
+    IDENT_START IDENT_PART* ( "-" IDENT_PART+ )*
+
+/**
+ * Hexadecimal color literal — workspace-token color definitions.
+ * Forms: #RGB, #RRGGBB, #RRGGBBAA.
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: DV-1, GV-9 (token resolution chain)
+ * FIRST tokens: "#"
+ * Normalization: ColorLiteral AST node
+ *
+ * Collision analysis: "#" appears nowhere else in DEAL surface syntax
+ * (the #xN forms in this file are W3C EBNF notation, not DEAL tokens).
+ * Unique FIRST character; no ambiguity. Mode-scoped to .dealview.
+ *
+ * Showcase: model/global.dealview:L47-51 — light(#B45309) dark(#F59E0B)
+ */
+HEX_COLOR ::=
+    "#" HEX_DIGIT HEX_DIGIT HEX_DIGIT
+        ( HEX_DIGIT HEX_DIGIT HEX_DIGIT ( HEX_DIGIT HEX_DIGIT )? )?
+
+HEX_DIGIT ::=
+    [0-9a-fA-F]
+
+/**
+ * Subtree glob — ** in membership path patterns (GV-13).
+ *
+ * Layer: L1 | Marker: [ext]
+ * Design decisions: GV-13, DV-1
+ * FIRST tokens: "*"
+ * Normalization: transparent — subtree-glob path step
+ *
+ * Collision analysis: longest match over STAR + STAR. .dealview mode
+ * has no multiplication, so adjacent stars only occur as the subtree
+ * glob. Mode-scoped: .deal/.dealx never emit DOUBLE_STAR ("**" cannot
+ * occur adjacently in valid .deal — multiplicity [*] and glob import
+ * are both single-star contexts).
+ *
+ * Showcase: model/vehicle.dealview:L36 — model.EVPlatform.**
+ */
+DOUBLE_STAR ::=
+    "**"
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// End of lexical.ebnf
+//
+// Token summary:
+//   Foundation:    4 (AnyChar, NL, WS, EOF)
+//   Comments:      3 (SINGLE_LINE_COMMENT, BLOCK_COMMENT, DOC_COMMENT)
+//   Identifiers:   2 (IDENT, UNRESTRICTED_NAME)
+//   Literals:      8 (INTEGER, REAL, STRING, SINGLE_QUOTED, TEMPLATE_HEAD/MIDDLE/TAIL/LITERAL, BOOLEAN)
+//   Keywords:     76
+//   Operators:     2 patterns (DELIMITED_OPERATOR, ANNOTATION_PREFIX) + 4 SysML aliases
+//   Annotations:   2 patterns (ANNOTATION_PREFIX, ANNOTATION)
+//   Delimiters:   28
+//   View mode:     3 (VIEW_IDENT, HEX_COLOR, DOUBLE_STAR — .dealview only)
+//   Total distinct token types: ~128
+//
+// Design decisions covered: NC-1, LM-1, LM-2, LM-3, SD-2, SD-3, SD-4,
+//   SD-5, SD-10, SD-11, SD-12, FS-2, CS-2, GV-9, GV-13, DV-1
+//
+// ═══════════════════════════════════════════════════════════════════════════

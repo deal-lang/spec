@@ -1,0 +1,495 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deal-lang.org/spec/ir/v0/schema.json",
+  "title": "DEAL IR v0 Document",
+  "description": "Normative JSON Schema for DEAL IR v0. Every deal_ir_json() output MUST validate against this schema. See spec/ir/v0/README.md for the human-readable reference.",
+  "type": "object",
+  "required": ["edges", "elements", "ir_version", "v"],
+  "additionalProperties": false,
+  "properties": {
+    "edges": {
+      "description": "Adjacency list of all relationship edges in the workspace graph. Alphabetical key order within each edge: dst, kind, src.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/Edge" }
+    },
+    "elements": {
+      "description": "Map from fully-qualified path ID (D-23) to IR node. Alphabetical key order within each node: kind, payload, source_file, span.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/IrNode" }
+    },
+    "ir_version": {
+      "description": "Schema version string. Always 'v0' for documents conforming to this schema.",
+      "type": "string",
+      "enum": ["v0"]
+    },
+    "v": {
+      "description": "Document format version. Always 1 for DEAL IR v0.",
+      "type": "integer",
+      "enum": [1]
+    }
+  },
+  "$defs": {
+    "Edge": {
+      "title": "IR Edge",
+      "description": "A directed relationship between two IR nodes. Keys alphabetical: dst, kind, src.",
+      "type": "object",
+      "required": ["dst", "kind", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "dst": {
+          "description": "Destination node ID (fully-qualified path, D-23).",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EdgeKind"
+        },
+        "src": {
+          "description": "Source node ID (fully-qualified path, D-23).",
+          "type": "string"
+        }
+      }
+    },
+    "EdgeKind": {
+      "title": "EdgeKind",
+      "description": "Relationship category for an IR Edge.",
+      "type": "string",
+      "enum": [
+        "allocated_to",
+        "carries",
+        "connects_via",
+        "contains",
+        "derives_from",
+        "imports",
+        "redefines",
+        "satisfies",
+        "specializes",
+        "subsets",
+        "traces"
+      ]
+    },
+    "IrNode": {
+      "title": "IR Node",
+      "description": "A single semantic element in the DEAL IR Document. Keys alphabetical: kind, payload, source_file, span.",
+      "type": "object",
+      "required": ["kind", "payload", "source_file", "span"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/NodeKind"
+        },
+        "payload": {
+          "$ref": "#/$defs/Payload"
+        },
+        "source_file": {
+          "description": "Workspace-relative source file path (T-02-11, T-02-19). No absolute paths.",
+          "type": "string"
+        },
+        "span": {
+          "description": "Byte-offset span carried over from the AST verbatim (D-15). [start, end] as u32 values.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "NodeKind": {
+      "title": "NodeKind",
+      "description": "Semantic category of an IR node.",
+      "type": "string",
+      "enum": [
+        "action_def",
+        "allocation_def",
+        "allocate",
+        "annotation",
+        "attribute_def",
+        "attribute_usage",
+        "calc_def",
+        "connect",
+        "connection_def",
+        "constraint_def",
+        "expose",
+        "flow_def",
+        "interface_def",
+        "item_def",
+        "need_def",
+        "package",
+        "part_def",
+        "part_usage",
+        "port_def",
+        "port_usage",
+        "requirement_def",
+        "satisfy",
+        "state_def",
+        "subsystem",
+        "system",
+        "traceability_block",
+        "use_case_def",
+        "validate"
+      ]
+    },
+    "AgentMetadata": {
+      "title": "AgentMetadata",
+      "description": "Optional typed envelope for @confidence, @rationale, @assumes, @concerns annotations. Alphabetical key order: assumes, concerns, confidence, rationale. Null/absent fields are omitted (D-18).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assumes": {
+          "description": "List of @assumes string values from annotations. Source order preserved.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "concerns": {
+          "description": "List of @concerns string values from annotations. Source order preserved.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "confidence": {
+          "description": "@confidence float value (0.0–1.0 by convention).",
+          "type": "number"
+        },
+        "rationale": {
+          "description": "@rationale string value.",
+          "type": "string"
+        }
+      }
+    },
+    "SimBinding": {
+      "title": "SimBinding",
+      "description": "A simulation binding from @simulation:<<computes>> or @simulation:<<validates against>> annotation. Alphabetical key order: entry, equation, fidelity, operator, target, tool. Null fields omitted.",
+      "type": "object",
+      "required": ["operator", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "description": "Optional entry point name (e.g. Python function name).",
+          "type": "string"
+        },
+        "equation": {
+          "description": "Optional equation string from annotation body.",
+          "type": "string"
+        },
+        "fidelity": {
+          "description": "Optional fidelity descriptor (e.g. 'CFD', 'lumped-parameter').",
+          "type": "string"
+        },
+        "operator": {
+          "description": "Simulation operator kind.",
+          "type": "string",
+          "enum": ["computes", "validates_against"]
+        },
+        "target": {
+          "description": "Name of the simulated quantity / target identifier.",
+          "type": "string"
+        },
+        "tool": {
+          "description": "Optional tool name (e.g. 'ANSYS Fluent').",
+          "type": "string"
+        }
+      }
+    },
+    "PayloadPackage": {
+      "title": "Payload: package",
+      "description": "Payload for NodeKind.package nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "name": {
+          "description": "Simple (unqualified) package name segment.",
+          "type": "string"
+        },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "PayloadPartDef": {
+      "title": "Payload: part_def",
+      "description": "Payload for NodeKind.part_def nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": {
+          "description": "Modifier keywords present on the declaration (abstract, derived, etc.).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "PayloadPortDef": {
+      "title": "Payload: port_def",
+      "description": "Payload for NodeKind.port_def nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "direction": {
+          "description": "Port direction (in/out/inout/none).",
+          "type": "string",
+          "enum": ["in", "inout", "none", "out"]
+        },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "PayloadRequirementDef": {
+      "title": "Payload: requirement_def",
+      "description": "Payload for NodeKind.requirement_def nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "Precision": {
+      "title": "Precision",
+      "description": "Generic precision slot shared at calc-return, attribute-value, and require-threshold sites (D-06/D-08). Parse-and-carry; not enforced until numeric-model Lane A.",
+      "type": "object",
+      "required": ["kind", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Precision kind: sig_figures, tolerance_absolute, or tolerance_relative.",
+          "type": "string",
+          "enum": ["sig_figures", "tolerance_absolute", "tolerance_relative"]
+        },
+        "value": {
+          "description": "Serialized precision value (e.g. \"4\" for sig 4, \"percent(1)\" for ±percent(1)).",
+          "type": "string"
+        }
+      }
+    },
+    "IrParam": {
+      "title": "IrParam",
+      "description": "A directed parameter in a calc_def node. Direction mirrors deal-sim I/O envelope (D-12).",
+      "type": "object",
+      "required": ["direction", "name", "type_name"],
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "description": "Parameter direction: in, out, or inout.",
+          "type": "string",
+          "enum": ["in", "inout", "out"]
+        },
+        "name": {
+          "description": "Simple parameter name.",
+          "type": "string"
+        },
+        "type_name": {
+          "description": "Declared type name (unresolved, as written in source).",
+          "type": "string"
+        }
+      }
+    },
+    "PayloadCalcDef": {
+      "title": "Payload: calc_def",
+      "description": "Payload for NodeKind.calc_def nodes. Directed-param shape coincides exactly with deal-sim I/O contract (D-12).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "is_statement_valued": {
+          "description": "True if any param has direction out or inout (purity flag, D-07).",
+          "type": "boolean"
+        },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "params": {
+          "description": "Ordered directed-parameter list (in-params == sim inputs, out-params == sim outputs).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/IrParam" }
+        },
+        "precision": {
+          "description": "Optional precision slot on the calc return contract (D-06/D-08). Null until Lane A.",
+          "$ref": "#/$defs/Precision"
+        },
+        "return_type": {
+          "description": "Declared return type name (unresolved, as written in source).",
+          "type": "string"
+        },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "PayloadAttributeUsage": {
+      "title": "Payload: attribute_usage",
+      "description": "Payload for NodeKind.attribute_usage nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "direction": {
+          "type": "string",
+          "enum": ["in", "inout", "none", "out"]
+        },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "precision": {
+          "description": "Optional precision slot on attribute/feature value (D-06/D-08). Null until Lane A.",
+          "$ref": "#/$defs/Precision"
+        },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        },
+        "type_ref": {
+          "description": "Fully-qualified path of the declared type (resolved by sema).",
+          "type": "string"
+        }
+      }
+    },
+    "PayloadPortUsage": {
+      "title": "Payload: port_usage",
+      "description": "Payload for NodeKind.port_usage nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "direction": {
+          "type": "string",
+          "enum": ["in", "inout", "none", "out"]
+        },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        },
+        "type_ref": {
+          "description": "Fully-qualified path of the declared port type.",
+          "type": "string"
+        }
+      }
+    },
+    "PayloadPartUsage": {
+      "title": "Payload: part_usage",
+      "description": "Payload for NodeKind.part_usage nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        },
+        "type_ref": {
+          "description": "Fully-qualified path of the part type.",
+          "type": "string"
+        }
+      }
+    },
+    "PayloadSatisfy": {
+      "title": "Payload: satisfy",
+      "description": "Payload for NodeKind.satisfy nodes (from @trace:<<satisfies>> and satisfy blocks).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "requirement_ref": {
+          "description": "Fully-qualified path of the satisfied requirement.",
+          "type": "string"
+        },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "PayloadTraceabilityBlock": {
+      "title": "Payload: traceability_block",
+      "description": "Payload for NodeKind.traceability_block nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        }
+      }
+    },
+    "PayloadGeneric": {
+      "title": "Payload: generic (action_def, state_def, attribute_def, item_def, interface_def, connection_def, flow_def, allocation_def, constraint_def, need_def, use_case_def, system, subsystem, connect, expose, allocate, validate, annotation)",
+      "description": "Generic payload used by node kinds that share the same basic shape. constraint_def nodes include optional precision for require-threshold sites (D-06/D-08).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string" },
+        "precision": {
+          "description": "Optional precision slot on require-threshold sites (D-06/D-08). Null until Lane A.",
+          "$ref": "#/$defs/Precision"
+        },
+        "simulation_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SimBinding" }
+        },
+        "type_ref": {
+          "description": "Optional type reference (fully-qualified path), present on usage nodes with type annotations.",
+          "type": "string"
+        }
+      }
+    },
+    "Payload": {
+      "title": "Payload",
+      "description": "Per-node payload. All payload variants share the optional agent_metadata and simulation_bindings fields. Per-kind specific fields are typed by the variant schemas. Alphabetical key ordering throughout.",
+      "oneOf": [
+        { "$ref": "#/$defs/PayloadPackage" },
+        { "$ref": "#/$defs/PayloadPartDef" },
+        { "$ref": "#/$defs/PayloadPortDef" },
+        { "$ref": "#/$defs/PayloadRequirementDef" },
+        { "$ref": "#/$defs/PayloadCalcDef" },
+        { "$ref": "#/$defs/PayloadAttributeUsage" },
+        { "$ref": "#/$defs/PayloadPortUsage" },
+        { "$ref": "#/$defs/PayloadPartUsage" },
+        { "$ref": "#/$defs/PayloadSatisfy" },
+        { "$ref": "#/$defs/PayloadTraceabilityBlock" },
+        { "$ref": "#/$defs/PayloadGeneric" }
+      ]
+    }
+  }
+}

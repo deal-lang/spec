@@ -1,0 +1,1969 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// DEAL Definition Grammar — deal.ebnf
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Language:  DEAL — Digital Engineering Authoring Language
+// Version:   0.1.0-draft
+// Notation:  W3C EBNF (XML 1.0 Fifth Edition §6)
+// Status:    Phase 3 of grammar-architect workflow
+//
+// This file defines the grammar for .deal definition files.
+// It depends on lexical.ebnf for all token definitions.
+//
+// The .deal grammar covers: file structure, @header, package/import/export,
+// all element definitions (part, port, action, state, requirement, need,
+// use case, interface, connection, flow, allocation, attribute, item,
+// constraint), element bodies, structural operators, annotations,
+// expressions, and type annotations.
+//
+// Design decisions implemented: FS-1, FS-2, FS-3, PS-2, PS-3, PS-4, PS-6,
+//   SD-1 through SD-20, CS-5, CS-15
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 1: File Structure
+// Design decisions: FS-1
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Top-level production for a .deal definition file.
+ * Every .deal file has this structure: optional header, package declaration,
+ * zero or more imports, zero or more definitions or exports.
+ *
+ * Design decisions: FS-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "@" (header), "package" (if no header)
+ * Normalization: DealFile root AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L1 — @header { ... } package vehicle.battery; import ...
+ *   packages/vehicle/index.deal:L1 — @header { ... } package vehicle; export ...
+ *
+ * Ambiguity notes:
+ *   No ambiguity — "@" always starts header (when present), "package" always
+ *   starts package declaration. Imports start with "import", exports with "export",
+ *   definitions with modifier/direction/element keywords or doc comments.
+ */
+DealFile ::=
+    HeaderBlock?
+    PackageDeclaration
+    ImportDeclaration*
+    _FileContent*
+    EOF
+
+/**
+ * Top-level file content — either a definition or an export statement.
+ * Helper production — no AST node generated.
+ *
+ * Design decisions: FS-1, PS-3, SD-19
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   Definition → DOC_COMMENT, "abstract", "derived", "readonly", "ordered",
+ *                "nonunique", "individual", "variation", "portion", "end", "ref",
+ *                "in", "out", "inout", "part", "port", "action", "state",
+ *                "attribute", "item", "interface", "connection", "flow",
+ *                "allocation", "requirement", "constraint", "need", "use"
+ *   ExportDeclaration → "export"
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   "export" uniquely identifies ExportDeclaration.
+ *   All other tokens route to Definition. No overlap.
+ */
+_FileContent ::=
+    Definition
+    | ExportDeclaration
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 2: @header Block
+// Design decisions: FS-2, FS-3
+// Layer: L3
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Configuration management header block.
+ * Contains file metadata: path, schema version, authorship, hash, status, etc.
+ *
+ * Design decisions: FS-2
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "@" "header"
+ * Normalization: HeaderBlock AST node — metadata attached to file root
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L1-10 —
+ *     @header {
+ *         path:       packages/vehicle/battery.deal
+ *         schema:     deal/0.1
+ *         created:    2026-05-16T09:00:00Z by "David Dunnock"
+ *         ...
+ *     }
+ *
+ * Ambiguity notes:
+ *   "@header" is a unique two-token sequence. The "@" token followed by
+ *   "header" (as IDENT) uniquely identifies this block. Other annotations
+ *   use "@" followed by a different IDENT.
+ *
+ *   Implementation note: "@header" is parsed as an ANNOTATION token by the
+ *   lexer (@ + IDENT), then the parser recognizes "header" specifically.
+ */
+HeaderBlock ::=
+    "@header" "{" HeaderField* "}"
+
+/**
+ * A single key-value field within an @header block.
+ * Interior syntax: key ":" value (colon-separated).
+ *
+ * Design decisions: FS-2, FS-3
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "path", "schema", "created", "modified", "reviewed",
+ *               "hash", "status", "baseline", "marking"
+ * Normalization: HeaderField AST node (key + value)
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L3 — path:       packages/vehicle/battery.deal
+ *   packages/vehicle/battery.deal:L5 — created:    2026-05-16T09:00:00Z by "David Dunnock ..."
+ *
+ * Ambiguity notes:
+ *   Header field keys are contextual keywords — they are only treated as
+ *   keywords inside the @header block. The ":" after the key uniquely
+ *   separates key from value. No ambiguity with type annotations because
+ *   type annotations only appear inside definition bodies.
+ *
+ *   Header values are free-form text up to the next newline, except for
+ *   the "by" and "via" attribution modifiers within created/modified/reviewed.
+ */
+HeaderField ::=
+    _HeaderKey ":" _HeaderValue NL
+
+/**
+ * Header field key — one of the defined CM field names.
+ * These are contextual keywords (only reserved inside @header).
+ *
+ * Design decisions: FS-2
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: each keyword below
+ * Normalization: transparent — key string
+ */
+_HeaderKey ::=
+    "path"
+    | "schema"
+    | "created"
+    | "modified"
+    | "reviewed"
+    | "hash"
+    | "status"
+    | "baseline"
+    | "marking"
+
+/**
+ * Header field value — varies by field type.
+ *
+ * Design decisions: FS-2, FS-3
+ * Layer: L3
+ * Marker: [ext]
+ * Normalization: transparent — value string
+ *
+ * Value forms by key:
+ *   path:       unquoted path string (e.g., packages/vehicle/battery.deal)
+ *   schema:     version string (e.g., deal/0.1)
+ *   created:    ISO 8601 timestamp + Attribution
+ *   modified:   ISO 8601 timestamp + Attribution
+ *   reviewed:   ISO 8601 timestamp + Attribution
+ *   hash:       algorithm:hex string (e.g., sha256:a3f2b8c9...)
+ *   status:     draft | review | baseline | superseded
+ *   baseline:   version string (e.g., v2.1.0)
+ *   marking:    classification string (e.g., CUI, Unclassified)
+ *
+ * Note: The header parser is intentionally lenient — values are parsed
+ * as raw text and validated semantically, not syntactically. This avoids
+ * making the grammar fragile to date format changes or new field types.
+ */
+_HeaderValue ::=
+    _HeaderValueChars Attribution?
+
+/**
+ * Raw header value characters — everything up to "by" attribution or newline.
+ */
+_HeaderValueChars ::=
+    ( AnyChar - ( NL ) )+
+
+/**
+ * Attribution — who performed the action and optionally which tool.
+ * Appears in created, modified, reviewed header fields.
+ *
+ * Design decisions: FS-3
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "by"
+ * Normalization: Attribution AST node (person + optional tool)
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L5 — ... by "David Dunnock <...>"
+ *   packages/vehicle/battery.deal:L6 — ... by "David Dunnock <...>" via claude:claude-code
+ *
+ * Ambiguity notes:
+ *   "by" is the unique discriminator. "via" optionally follows after the
+ *   quoted person string. No ambiguity — "by" only appears in this context
+ *   within the header.
+ */
+Attribution ::=
+    "by" QuotedString ( "via" _ToolIdentifier )?
+
+/**
+ * Tool identifier in attribution — colon-separated tool:name.
+ * Examples: deal:fmt, deal:import, claude:claude-code
+ *
+ * Design decisions: FS-3
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: transparent — tool string
+ */
+_ToolIdentifier ::=
+    IDENT ":" IDENT
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 3: Package Declaration
+// Design decisions: PS-2
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Package declaration — establishes the namespace for this file.
+ * Uses dot-separated path matching the directory structure.
+ *
+ * Design decisions: PS-2
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "package"
+ * Normalization: PackageDeclaration AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L12 — package vehicle.battery;
+ *   packages/interfaces/electrical.deal:L12 — package interfaces.electrical;
+ *   packages/vehicle/index.deal:L12 — package vehicle;
+ *
+ * Ambiguity notes:
+ *   "package" is the unique FIRST token. No other statement starts with "package".
+ */
+PackageDeclaration ::=
+    "package" QualifiedName ";"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 4: Import Declarations
+// Design decisions: PS-4, PS-6
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Import declaration — brings names into scope.
+ * Five forms per PS-4:
+ *   1. Named import:    import deal.std.units.{kg, m, s};
+ *   2. Workspace alias: import tracking.{Radar};
+ *   3. Relative (dot):  import .local_module.{HelperType};
+ *   4. Relative (parent): import ..sibling.{SharedInterface};
+ *   5. Glob import:     import interfaces.*;
+ *   6. Module alias:    import interfaces as intf;
+ *
+ * Design decisions: PS-4
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "import"
+ * Normalization: ImportDeclaration AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L14 — import deal.std.units.{kg, kWh, V, A, kW, degC, ohm};
+ *   packages/vehicle/battery.deal:L15 — import interfaces.{HVDCPort, CoolantPort, ThermallyManaged, CANBus};
+ *
+ * Ambiguity notes:
+ *   "import" is the unique FIRST token. After the import path:
+ *     "." + "{" → named destructured import
+ *     "." + "*" → glob import
+ *     "as" → module alias
+ *     ";" → bare import (if ever needed)
+ *   The relative prefix ("." or "..") is distinguished from the path
+ *   separator "." by position — leading dot(s) indicate relative import.
+ */
+ImportDeclaration ::=
+    "import" ImportPath ( ImportTail )? ";"
+
+/**
+ * Import path — the module path to import from.
+ * Can be absolute (starts with IDENT), relative (starts with "." or ".."),
+ * or glob (ends with ".*").
+ *
+ * Design decisions: PS-4
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT, ".", ".."
+ * Normalization: transparent — path segments
+ *
+ * Ambiguity notes:
+ *   Leading "." → relative to current package
+ *   Leading ".." → relative to parent package
+ *   IDENT → absolute or workspace alias
+ *   Resolved by first token.
+ */
+ImportPath ::=
+    _RelativePrefix? IDENT ( "." IDENT )*
+
+/**
+ * Relative import prefix — "." for current package, ".." for parent.
+ *
+ * Design decisions: PS-4
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: ".", ".."
+ */
+_RelativePrefix ::=
+    ".."
+    | "."
+
+/**
+ * Import tail — what follows the module path.
+ *
+ * Design decisions: PS-4
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   Destructured → "." "{"
+ *   Glob → "." "*"
+ *   Alias → "as"
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   After the base path, lookahead on:
+ *     "." + "{" → destructured import (LL(2) — look past "." to "{" vs IDENT)
+ *     "." + "*" → glob import (LL(2) — look past "." to "*")
+ *     "as" → alias import
+ *   LL(2) justified: the "." is ambiguous with a further path segment
+ *   until we see "{" or "*" or IDENT after it.
+ */
+ImportTail ::=
+    "." "{" _NameList "}"
+    | "." "*"
+    | "as" IDENT
+
+/**
+ * Comma-separated list of names — used in destructured imports and exports.
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: transparent — list of name strings
+ */
+_NameList ::=
+    IDENT ( "," IDENT )*
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 5: Export Declarations (Barrel/index.deal)
+// Design decisions: PS-3
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Export declaration — re-exports names from submodules.
+ * Only valid in index.deal barrel files.
+ * Syntax: export submodule.{Name1, Name2};
+ *
+ * Design decisions: PS-3
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "export"
+ * Normalization: ExportDeclaration AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/index.deal:L14 — export battery.{BatteryPack, BatteryModule, BatteryCell, BMS};
+ *   packages/interfaces/index.deal:L14-18 — export connections.{
+ *       HVDCCable, CANHarness, CoolantHose, DriveShaft,
+ *       PowerDelivery, CANMessages, CoolantCirculation, TorqueTransmission
+ *   };
+ *
+ * Ambiguity notes:
+ *   "export" is the unique FIRST token. No overlap with other statements.
+ */
+ExportDeclaration ::=
+    "export" IDENT "." "{" _NameList "}" ";"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 6: Shared Name Productions
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Qualified name — dot-separated identifier path.
+ * Used for package declarations, type references, path expressions.
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: QualifiedName AST node [sem: name-resolution]
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L12 — package vehicle.battery;
+ *   packages/use-cases/driving.deal:L45 — vehicle.battery.soc >= 0.95
+ *
+ * Ambiguity notes:
+ *   Greedy — consumes IDENT "." IDENT "." ... as long as "." + IDENT follows.
+ *   Path expressions like "vehicle.battery.soc" and namespace paths like
+ *   "vehicle.battery" use the same production. Context determines semantics.
+ */
+QualifiedName ::=
+    IDENT ( "." IDENT )*
+
+/**
+ * Namespace-qualified name with :: separator.
+ * Used for cross-namespace references: Vehicle::mass, REQ_SYS_001.minRange
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: NamespacePath AST node [sem: name-resolution]
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal — <<redefines>> Vehicle::mass
+ *   (implied by redefinition patterns)
+ */
+NamespacePath ::=
+    IDENT ( ( "::" | "." ) IDENT )*
+
+/**
+ * Quoted string accepted by parser productions.
+ * Double quotes are canonical; single quotes are accepted as an alias
+ * and normalized by deal fmt.
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: STRING_LITERAL, SINGLE_QUOTED_STRING
+ * Normalization: StringLiteral AST node
+ */
+QuotedString ::=
+    STRING_LITERAL
+    | SINGLE_QUOTED_STRING
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 7: Definition Dispatch
+// Design decisions: SD-1, SD-7, SD-8, SD-18
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Definition — a typed element definition preceded by optional doc comment,
+ * modifiers, and direction.
+ *
+ * Design decisions: SD-1, SD-7, SD-8, SD-16
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: DOC_COMMENT, "abstract", "derived", "readonly", "ordered",
+ *               "nonunique", "individual", "variation", "portion", "end", "ref",
+ *               "in", "out", "inout", "part", "port", "action", "state",
+ *               "attribute", "item", "interface", "connection", "flow",
+ *               "allocation", "requirement", "constraint", "need", "use"
+ * Normalization: transparent — dispatches to specific definition type
+ *
+ * Ambiguity notes:
+ *   The element keyword (after optional modifiers/direction) uniquely
+ *   determines which definition production to enter. All element keywords
+ *   are disjoint. The "def" keyword at position 2 confirms this is a
+ *   definition (vs a usage), but since .deal files only contain definitions
+ *   and usages are inside definition bodies, context resolves this.
+ */
+Definition ::=
+    DOC_COMMENT?
+    _DefinitionInner
+
+/**
+ * Inner definition dispatch — after optional doc comment.
+ * Strips modifiers and direction, then dispatches on element keyword.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens per alternative (after modifiers/direction):
+ *   PartDefinition        → "part" "def"
+ *   PortDefinition        → "port" "def"
+ *   ActionDefinition      → "action" "def"
+ *   StateDefinition       → "state" "def"
+ *   AttributeDefinition   → "attribute" "def"
+ *   ItemDefinition        → "item" "def"
+ *   InterfaceDefinition   → "interface" "def"
+ *   ConnectionDefinition  → "connection" "def"
+ *   FlowDefinition        → "flow" "def"
+ *   AllocationDefinition  → "allocation" "def"
+ *   RequirementDefinition → "requirement" "def"
+ *   ConstraintDefinition  → "constraint" "def"
+ *   NeedDefinition        → "need" "def"
+ *   UseCaseDefinition     → "use" "case" "def"
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   All element keywords are disjoint single tokens. "use case" is parsed
+ *   as two adjacent keyword tokens. Modifiers precede the element keyword
+ *   but don't create ambiguity because no modifier is also an element
+ *   keyword. Direction keywords (in/out/inout) similarly don't overlap
+ *   with element keywords.
+ */
+_DefinitionInner ::=
+    _ModifierPrefix* _DirectionPrefix? _ElementDefinition
+
+/**
+ * Element definition dispatch — on the element keyword.
+ *
+ * Design decisions: SD-1, SD-18, CS-5
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: see _DefinitionInner
+ * Normalization: transparent
+ */
+_ElementDefinition ::=
+    PartDefinition
+    | PortDefinition
+    | ActionDefinition
+    | StateDefinition
+    | AttributeDefinition
+    | ItemDefinition
+    | InterfaceDefinition
+    | ConnectionDefinition
+    | FlowDefinition
+    | AllocationDefinition
+    | RequirementDefinition
+    | ConstraintDefinition
+    | CalcDefinition
+    | NeedDefinition
+    | UseCaseDefinition
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 8: Element Definitions
+// Design decisions: SD-1, SD-3, SD-18
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Part definition — defines a structural part type.
+ *
+ * Design decisions: SD-1, SD-3
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "part"
+ * Normalization: PartDefinition AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L19 — part def BatteryCell { ... }
+ *   packages/vehicle/battery.deal:L65 — part def BatteryPack <<specializes>> ThermallyManaged { ... }
+ *
+ * Ambiguity notes:
+ *   "part" + "def" uniquely identifies. StructuralRelationship is optional
+ *   (present when <<specializes>> etc. follows the name).
+ */
+PartDefinition ::=
+    "part" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Port definition — defines a port type (interface point).
+ *
+ * Design decisions: SD-1, SD-3
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "port"
+ * Normalization: PortDefinition AST node
+ *
+ * Showcase example:
+ *   packages/interfaces/electrical.deal:L15 — port def HVDCPort { ... }
+ *   packages/interfaces/electrical.deal:L52 — port def RegenPowerPort <<specializes>> HVDCPort { ... }
+ */
+PortDefinition ::=
+    "port" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Interface definition — defines a named interface contract.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "interface"
+ * Normalization: InterfaceDefinition AST node
+ *
+ * Showcase example:
+ *   packages/interfaces/electrical.deal:L64 — interface def CANBus { ... }
+ *   packages/interfaces/thermal.deal:L22 — interface def ThermallyManaged { ... }
+ */
+InterfaceDefinition ::=
+    "interface" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Connection definition — defines a physical connection medium type.
+ *
+ * Design decisions: SD-1, CS-5
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "connection"
+ * Normalization: ConnectionDefinition AST node
+ *
+ * Showcase example:
+ *   packages/interfaces/connections.deal:L15 — connection def HVDCCable { ... }
+ *   packages/interfaces/connections.deal:L33 — connection def CANHarness { ... }
+ */
+ConnectionDefinition ::=
+    "connection" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Flow definition — defines a logical flow type (what travels over a connection).
+ *
+ * Design decisions: SD-1, CS-5
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "flow"
+ * Normalization: FlowDefinition AST node
+ *
+ * Showcase example:
+ *   packages/interfaces/connections.deal:L63 — flow def PowerDelivery { ... }
+ *   packages/interfaces/connections.deal:L76 — flow def CANMessages { ... }
+ */
+FlowDefinition ::=
+    "flow" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Item definition — defines a standalone item type.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "item"
+ * Normalization: ItemDefinition AST node
+ *
+ * Showcase example:
+ *   (no showcase example yet — production kept for completeness per SD-1)
+ */
+ItemDefinition ::=
+    "item" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Attribute definition — defines a named attribute type.
+ * Note: Most attributes in the showcase are attribute *usages* inside
+ * definition bodies, not standalone attribute definitions. This covers
+ * the "attribute def" form.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "attribute"
+ * Normalization: AttributeDefinition AST node
+ *
+ * Showcase example:
+ *   (attribute defs not used in showcase — attribute usages are in bodies)
+ */
+AttributeDefinition ::=
+    "attribute" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Allocation definition — defines an allocation relationship type.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "allocation"
+ * Normalization: AllocationDefinition AST node
+ *
+ * Showcase example:
+ *   (allocations in showcase are done via [<allocate>] tags in .dealx,
+ *    not as allocation def in .deal — production kept for completeness)
+ */
+AllocationDefinition ::=
+    "allocation" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * Constraint definition — a named, optionally parameterized Boolean predicate.
+ *
+ * Design decisions: SD-1, SD-22
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "constraint"
+ * Normalization: ConstraintDefinition AST node
+ *
+ * A constraint def is Boolean-valued and callable via FunctionCallExpression,
+ * so existing boolean blocks (precondition, postcondition, satisfy criteria,
+ * any ConditionExpression) can reference it with no grammar change. Multiple
+ * RequireStatements in the body are an implicit conjunction (all must hold).
+ *
+ * Two usage modes:
+ *   - Parameterized predicate (reusable):  constraint def PositiveForce(f : Force) { require f >= N(0); }
+ *   - Contextual invariant (encl. scope):  constraint def BatteryLimits { require packTemp <= degC(60); }
+ *
+ * Showcase example:
+ *   packages/analysis/constraints.deal:L16 — constraint def PositiveForce(f : Force) { ... }
+ *   packages/analysis/constraints.deal:L21 — constraint def BatteryLimits { ... }
+ *
+ * Ambiguity notes:
+ *   "constraint" + "def" uniquely identifies. After IDENT, "(" opens an optional
+ *   ParameterList (FIRST "("); DELIMITED_OPERATOR ("<<") opens StructuralRelationship;
+ *   "{" opens ConstraintBody. These three FIRST tokens are disjoint.
+ */
+ConstraintDefinition ::=
+    "constraint" "def" IDENT ParameterList? StructuralRelationship? ConstraintBody
+
+/**
+ * Constraint body — annotations, local bindings, and require statements.
+ *
+ * Design decisions: SD-22
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: ConstraintBody AST node
+ *
+ * Ambiguity notes:
+ *   Inside the body, RequireStatement (FIRST "require"), LocalBinding
+ *   (FIRST "derived" | "attribute"), and AnnotationStatement (FIRST "@")
+ *   have pairwise-disjoint FIRST sets.
+ */
+ConstraintBody ::=
+    "{" ( AnnotationStatement | LocalBinding | RequireStatement )* "}"
+
+/**
+ * Require statement — a Boolean invariant inside a constraint body.
+ *
+ * Design decisions: SD-22, SD-23, D-06
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "require"
+ * Normalization: RequireStatement AST node [sem: model-level evaluable]
+ *
+ * Reuses ConditionExpression (the precondition/criteria boolean form), so a
+ * require may itself call calcs and other constraints. Multiple requires AND.
+ *
+ * D-06 (generalized precision): a require threshold may carry a `=>` precision
+ * contract on its result value — e.g. `require mass <= kg(1500) => sig 4;`.
+ * The optional ReturnContract attaches to the require result, not the boolean
+ * condition itself (result-only; never bare sub-literals).
+ *
+ * Showcase example:
+ *   packages/analysis/constraints.deal:L13 — require f >= N(0);
+ *   packages/analysis/precision.deal — require mass <= kg(1500) => sig 4;
+ */
+RequireStatement ::=
+    "require" ConditionExpression ReturnContract? ";"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 8b: Calculation Definitions (SD-21, SD-23)
+// Design decisions: SD-21, SD-23
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Calc definition — a named, typed, reusable calculation (pure function).
+ *
+ * Design decisions: SD-21, SD-23
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "calc"
+ * Normalization: CalcDefinition AST node [sem: purity + dimensional check]
+ *
+ * Maps to a KerML Function (directed parameters + result feature). A calc whose
+ * parameters are all "in" (the default) with a single ReturnStatement is
+ * EXPRESSION-VALUED — callable inside any expression via FunctionCallExpression.
+ * A calc with any "out" parameter is STATEMENT-VALUED (sema rule SD-21), callable
+ * only in statement position (e.g. a compute block), not inside an expression.
+ *
+ * Showcase example:
+ *   packages/analysis/calcs.deal:L17 — calc def MarginOfSafety(allowable : Pressure, actual : Pressure) : Real { ... }
+ *   packages/analysis/calcs.deal:L22 — calc def Drag(...) : Force => ± percent(1), PositiveForce { ... }
+ *
+ * Ambiguity notes:
+ *   "calc" + "def" uniquely identifies (KW_CALC is a distinct FIRST token).
+ *   After the signature, ReturnContract is introduced by ARROW "=>" (optional);
+ *   CalcBody is introduced by "{". "=>" here never collides with the .dealx
+ *   SatisfyReturnType "=>" — different start symbol, and FIRST after "=>" is
+ *   disjoint ("{" for satisfy returns vs "sig"/"±"/IDENT for a calc contract).
+ */
+CalcDefinition ::=
+    "calc" "def" IDENT ParameterList TypeAnnotation ReturnContract? CalcBody
+
+/**
+ * Parameter list — typed inputs of a calc (and optional params of a constraint).
+ *
+ * Design decisions: SD-21
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "("
+ * Normalization: ParameterList AST node
+ */
+ParameterList ::=
+    "(" ( ParameterDecl ( "," ParameterDecl )* )? ")"
+
+/**
+ * Parameter declaration — one typed parameter.
+ *
+ * Design decisions: SD-21
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "in" | "out" | "inout" | IDENT
+ * Normalization: ParameterDecl AST node (direction defaults to "in")
+ *
+ * The optional _DirectionPrefix defaults to "in". "out"/"inout" exist for full
+ * KerML fidelity (superset) but are discouraged by style and trigger the
+ * statement-valued rule above; `deal fmt` omits a redundant leading "in".
+ */
+ParameterDecl ::=
+    _DirectionPrefix? IDENT TypeAnnotation Multiplicity?
+
+/**
+ * Return contract — an optional list of obligations on a calc's result.
+ *
+ * Design decisions: SD-23
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "=>"
+ * Normalization: ReturnContract AST node
+ *
+ * Each item is either a precision obligation (parsed now, enforced by the
+ * numeric-model Lane A passes — N-03/N-04) or a reference to a constraint def.
+ */
+ReturnContract ::=
+    "=>" ContractItem ( "," ContractItem )*
+
+ContractItem ::=
+    PrecisionSpec
+    | ConstraintRef
+
+/**
+ * Constraint reference — names a constraint def, optionally applied to args.
+ *
+ * Design decisions: SD-23, SD-22
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: ConstraintRef AST node
+ *
+ * _ArgumentList is the existing call-argument production (shared with
+ * FunctionCallExpression — not redefined here).
+ */
+ConstraintRef ::=
+    QualifiedName _ArgumentList?
+
+/**
+ * Precision spec — significant figures or a tolerance (numeric-model N-01 seed).
+ *
+ * Design decisions: SD-23
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "sig" | "±"
+ * Normalization: PrecisionSpec AST node [sem: deferred to numeric-model Lane A]
+ *
+ * Grammar lands now; storage selection / error propagation / FP-determinism
+ * enforcement is the numeric-model Lane A work and is NOT part of this change.
+ */
+PrecisionSpec ::=
+    "sig" INTEGER_LITERAL
+    | "±" Tolerance
+
+/**
+ * Tolerance — the magnitude after "±".
+ *
+ * Design decisions: SD-23
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT (unit constructor) | INTEGER_LITERAL | REAL_LITERAL
+ * Normalization: transparent — carries the tolerance expression
+ *
+ * Absolute (unit-checked against the return type): ± mV(1), ± percent(2)
+ * Relative dimensionless: ± 0.001, ± 1.0e-9  (REAL_LITERAL already supports e-notation)
+ */
+Tolerance ::=
+    FunctionCallExpression
+    | INTEGER_LITERAL
+    | REAL_LITERAL
+
+/**
+ * Calc body — local bindings then exactly one return statement.
+ *
+ * Design decisions: SD-21
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: CalcBody AST node
+ *
+ * Intentionally restricted to the model-level-evaluable subset (KerML
+ * §8.4.4.9.8): no loops, I/O, or statements beyond LocalBinding. Heavier
+ * computation belongs to deal-sim.
+ */
+CalcBody ::=
+    "{" ( AnnotationStatement | LocalBinding )* ReturnStatement "}"
+
+/**
+ * Local binding — a derived/plain attribute computed within a calc body.
+ *
+ * Design decisions: SD-21
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "derived" | "attribute"
+ * Normalization: reuses the existing AttributeUsage + DefaultValue forms
+ */
+LocalBinding ::=
+    "derived"? "attribute" IDENT TypeAnnotation "=" Expression ";"
+
+/**
+ * Return statement — binds the calc result (KerML result feature).
+ *
+ * Design decisions: SD-21
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "return"
+ * Normalization: ReturnStatement AST node
+ */
+ReturnStatement ::=
+    "return" Expression ";"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 9: Behavioral Definitions
+// Design decisions: SD-1
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Action definition — defines a behavioral action type.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "action"
+ * Normalization: ActionDefinition AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal:L14 — action def Accelerate { ... }
+ *   packages/vehicle/behaviors.deal:L32 — action def RegenerativeBrake { ... }
+ */
+ActionDefinition ::=
+    "action" "def" IDENT StructuralRelationship? DefinitionBody
+
+/**
+ * State definition — defines a state machine type.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "state"
+ * Normalization: StateDefinition AST node
+ *
+ * Showcase example:
+ *   (no showcase example yet — production kept for completeness per SD-1)
+ */
+StateDefinition ::=
+    "state" "def" IDENT StructuralRelationship? DefinitionBody
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 10: Requirement Definitions
+// Design decisions: SD-18, SD-20
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Need definition — solution-agnostic stakeholder need.
+ *
+ * Design decisions: SD-18
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "need"
+ * Normalization: NeedDefinition AST node
+ *
+ * Showcase example:
+ *   packages/requirements/needs.deal:L16 — need def NEED_RANGE { ... }
+ *   packages/requirements/needs.deal:L27 — need def NEED_FAST_CHARGE { ... }
+ */
+NeedDefinition ::=
+    "need" "def" IDENT DefinitionBody
+
+/**
+ * Requirement definition — verifiable requirement with optional verification block.
+ *
+ * Design decisions: SD-18, SD-20
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "requirement"
+ * Normalization: RequirementDefinition AST node
+ *
+ * Showcase example:
+ *   packages/requirements/system.deal:L22 — requirement def REQ_SYS_001 {
+ *       public ( ... )
+ *       verification { accepts: [simulation, test]; ... }
+ *   }
+ *
+ * Ambiguity notes:
+ *   "requirement" + "def" uniquely identifies. The VerificationBlock inside
+ *   the body is optional and keyed by "verification" keyword.
+ */
+RequirementDefinition ::=
+    "requirement" "def" IDENT DefinitionBody
+
+/**
+ * Use case definition — includes actor, subject, precondition, postcondition.
+ *
+ * Design decisions: SD-18
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "use" "case"
+ * Normalization: UseCaseDefinition AST node
+ *
+ * Showcase example:
+ *   packages/use-cases/driving.deal:L22 — use case def LongDistanceTrip { ... }
+ *   packages/use-cases/charging.deal:L19 — use case def DCFastCharge { ... }
+ *
+ * Ambiguity notes:
+ *   The lexer emits "use" and "case" separately. The parser recognizes
+ *   the adjacent pair as the use-case construct. "use" alone is not a
+ *   definition keyword.
+ */
+UseCaseDefinition ::=
+    "use" "case" "def" IDENT DefinitionBody
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 11: Definition Body
+// Design decisions: SD-9, SD-10
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Definition body — the brace-delimited content of any element definition.
+ * Contains visibility wrappers, member declarations, annotations,
+ * and (for requirements) a verification block.
+ *
+ * Design decisions: SD-9, SD-10
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: DefinitionBody AST node — contains ordered members
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L19-44 — { @confidence: 0.95 ... public ( ... ) ... }
+ *
+ * Ambiguity notes:
+ *   "{" uniquely opens a definition body. Inside the body, members are
+ *   disambiguated by their FIRST tokens — see _BodyMember.
+ */
+DefinitionBody ::=
+    "{" _BodyMember* "}"
+
+/**
+ * Body member — any element that can appear inside a definition body.
+ * Dispatches by FIRST token.
+ *
+ * Design decisions: SD-7, SD-8, SD-9, SD-15, SD-16, SD-20
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   VisibilityWrapper      → "public", "protected", "private"
+ *   AnnotationStatement    → "@" (ANNOTATION or ANNOTATION_PREFIX)
+ *   VerificationBlock      → "verification"
+ *   PreconditionBlock      → "precondition"
+ *   PostconditionBlock     → "postcondition"
+ *   MemberDeclaration      → DOC_COMMENT, "abstract", "derived", "readonly",
+ *                             "ordered", "nonunique", "individual", "variation",
+ *                             "portion", "end", "ref", "in", "out", "inout",
+ *                             "part", "port", "action", "state", "attribute",
+ *                             "item", "interface", "connection", "flow",
+ *                             "allocation", "requirement", "constraint",
+ *                             "need", "use", "actor", "subject",
+ *                             DELIMITED_OPERATOR (<<redefines>> etc.)
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   Visibility keywords, "@", "verification", "precondition", "postcondition"
+ *   are all disjoint from each other and from member declaration keywords.
+ *   SINGLE_LINE_COMMENT and BLOCK_COMMENT are skipped by the lexer.
+ */
+_BodyMember ::=
+    VisibilityWrapper
+    | AnnotationStatement
+    | VerificationBlock
+    | PreconditionBlock
+    | PostconditionBlock
+    | MemberDeclaration
+
+/**
+ * Visibility wrapper — groups members under a visibility scope.
+ * Syntax: public ( ... ) | protected ( ... ) | private ( ... )
+ *
+ * Design decisions: SD-9
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "public", "protected", "private"
+ * Normalization: VisibilityWrapper AST node — visibility + member list
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L23-30 — public ( attribute nominalVoltage : ... ; ... )
+ *   packages/vehicle/battery.deal:L32-35 — protected ( attribute internalResistance : ... ; ... )
+ *   packages/vehicle/battery.deal:L37-39 — private ( attribute internalState : ... ; )
+ */
+VisibilityWrapper ::=
+    _VisibilityKeyword "(" MemberDeclaration* ")"
+
+_VisibilityKeyword ::=
+    "public"
+    | "protected"
+    | "private"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 12: Member Declarations
+// Design decisions: SD-1, SD-2, SD-7, SD-8, SD-10, SD-14
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Member declaration — a single member inside a definition body or
+ * visibility wrapper. Can be an element usage (part, port, attribute,
+ * action), a structural operator statement (<<redefines>>), or an
+ * inline annotation.
+ *
+ * Design decisions: SD-1, SD-2, SD-7, SD-8, SD-10
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: DOC_COMMENT, modifier keywords, direction keywords,
+ *               element keywords, DELIMITED_OPERATOR
+ * Normalization: transparent — dispatches to specific member type
+ *
+ * Ambiguity notes:
+ *   After stripping doc comment + modifiers + direction, the element
+ *   keyword determines type. The absence of "def" after the element
+ *   keyword distinguishes usage from definition (usages don't have "def").
+ *   DELIMITED_OPERATOR (e.g., <<redefines>>) starts a redefinition statement.
+ */
+MemberDeclaration ::=
+    DOC_COMMENT?
+    _MemberInner
+
+_MemberInner ::=
+    _ModifierPrefix* _DirectionPrefix? _MemberContent
+
+/**
+ * Member content — dispatches on element keyword or operator.
+ *
+ * FIRST tokens per alternative:
+ *   PartUsage       → "part"
+ *   PortUsage       → "port"
+ *   AttributeUsage  → "attribute"
+ *   ActionUsage     → "action"
+ *   ActorUsage      → "actor"
+ *   SubjectUsage    → "subject"
+ *   OperatorStatement → DELIMITED_OPERATOR (<<redefines>>, etc.)
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   All keywords are disjoint. DELIMITED_OPERATOR starts with "<<"
+ *   which doesn't collide with any keyword.
+ */
+_MemberContent ::=
+    PartUsage
+    | PortUsage
+    | AttributeUsage
+    | ActionUsage
+    | ActorUsage
+    | SubjectUsage
+    | OperatorStatement
+
+/**
+ * Part usage — instantiates a part inside a definition body.
+ * Syntax: part name : Type [multiplicity] (= default)? ;
+ *         part name : Type [multiplicity] { ... }
+ *
+ * Design decisions: SD-1, SD-2, SD-14, SD-10
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "part"
+ * Normalization: PartUsage AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L50 — ordered part cells : BatteryCell [48];
+ *   packages/vehicle/battery.deal:L81 — ordered part modules : BatteryModule [20];
+ *
+ * Ambiguity notes:
+ *   "part" without "def" → usage. "part" + "def" → definition.
+ *   Since definitions only appear at file level and usages only inside
+ *   bodies, the parser context resolves this without lookahead.
+ */
+PartUsage ::=
+    "part" IDENT TypeAnnotation? Multiplicity? ( DefaultValue | InlineBody )? ";"?
+
+/**
+ * Port usage — declares a port instance inside a definition body.
+ *
+ * Design decisions: SD-1, SD-2, SD-8, SD-14
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "port"
+ * Normalization: PortUsage AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L77 — out port hvOut : HVDCPort [1] { ... }
+ *   packages/interfaces/thermal.deal:L27 — in port coolantIn : CoolantPort [1];
+ */
+PortUsage ::=
+    "port" IDENT TypeAnnotation? Multiplicity? ( DefaultValue | InlineBody )? ";"?
+
+/**
+ * Attribute usage — declares an attribute inside a definition body.
+ * Can have type annotation, multiplicity, default value, and an optional
+ * precision contract on the result value (D-06, SD-23 generalization).
+ *
+ * Design decisions: SD-1, SD-2, SD-14, SD-13, SD-23, D-06
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "attribute"
+ * Normalization: AttributeUsage AST node
+ *
+ * D-06 (generalized precision): the optional `=> ReturnContract` attaches to
+ * the attribute VALUE (after the DefaultValue expression), BEFORE the ";"
+ * terminator. It records a precision obligation on the result, not on the
+ * type annotation itself. Example:
+ *   attribute mass : Mass = kg(5) => sig 4;
+ *   derived attribute q : Pressure = ... => ± percent(1);
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L24 — attribute nominalVoltage : Voltage [1] = V(3.7);
+ *   packages/vehicle/battery.deal:L34 — derived attribute specificEnergy : Real = capacity / mass;
+ *   packages/analysis/precision.deal — attribute mass : Mass = kg(5) => sig 4;
+ */
+AttributeUsage ::=
+    "attribute" IDENT TypeAnnotation? Multiplicity? DefaultValue? ReturnContract? ";"
+
+/**
+ * Action usage — declares a sub-action inside an action definition or use case.
+ *
+ * Design decisions: SD-1
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "action"
+ * Normalization: ActionUsage AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal:L22 — action requestTorque;
+ *   packages/use-cases/driving.deal:L42-46 — action depart; action cruiseHighway; ...
+ */
+ActionUsage ::=
+    "action" IDENT TypeAnnotation? ";"
+
+/**
+ * Actor usage — declares an actor in a use case definition.
+ *
+ * Design decisions: SD-18
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "actor"
+ * Normalization: ActorUsage AST node
+ *
+ * Showcase example:
+ *   packages/use-cases/driving.deal:L18 — actor driver : Person [1];
+ */
+ActorUsage ::=
+    "actor" IDENT TypeAnnotation? Multiplicity? ";"
+
+/**
+ * Subject usage — declares the subject in a use case definition.
+ *
+ * Design decisions: SD-18
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "subject"
+ * Normalization: SubjectUsage AST node
+ *
+ * Showcase example:
+ *   packages/use-cases/driving.deal:L19 — subject vehicle : EVPlatform [1];
+ */
+SubjectUsage ::=
+    "subject" IDENT TypeAnnotation? Multiplicity? ";"
+
+/**
+ * Operator statement — a <<redefines>>, <<subsets>>, or similar statement
+ * appearing as a standalone member (not part of a definition header).
+ *
+ * Design decisions: SD-3, SD-4
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: DELIMITED_OPERATOR ("<<")
+ * Normalization: OperatorStatement AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L78-79 —
+ *     <<redefines>> voltage = V(800);
+ *     <<redefines>> maxCurrent = A(350);
+ *   packages/vehicle/battery.deal:L93-96 —
+ *     <<redefines>> maxOperatingTemp = degC(45);
+ *     <<redefines>> thermalMass = packMass;
+ */
+OperatorStatement ::=
+    DELIMITED_OPERATOR NamespacePath ( DefaultValue )? ";"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 13: Type Annotations, Multiplicity, and Default Values
+// Design decisions: SD-2, SD-14, SD-13
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Type annotation — colon followed by type name.
+ *
+ * Design decisions: SD-2
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: ":"
+ * Normalization: TypeAnnotation AST node [sem: type-resolution]
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L24 — : Voltage [1]
+ *   packages/vehicle/battery.deal:L26 — : Mass [1]
+ */
+TypeAnnotation ::=
+    ":" QualifiedName
+
+/**
+ * Multiplicity — cardinality constraint in square brackets.
+ *
+ * Design decisions: SD-14
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "["
+ * Normalization: Multiplicity AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L24 — [1] (exactly one)
+ *   packages/vehicle/battery.deal:L50 — [48] (exactly 48)
+ *   packages/interfaces/connections.deal:L82 — [0..*] (zero or more)
+ *   packages/vehicle/battery.deal (implied) — [1..*] (one or more)
+ *
+ * Forms:
+ *   [N]      — exactly N
+ *   [N..M]   — N to M inclusive
+ *   [N..*]   — N or more
+ *   [*]      — zero or more
+ *   [0..1]   — optional
+ *
+ * Ambiguity notes:
+ *   "[" followed by INTEGER or "*" uniquely identifies multiplicity.
+ *   "[" is not confused with composition tags because "[<" is a separate
+ *   two-char token in the lexer.
+ */
+Multiplicity ::=
+    "[" _MultiplicityRange "]"
+
+_MultiplicityRange ::=
+    "*"
+    | INTEGER_LITERAL ".." ( INTEGER_LITERAL | "*" )
+    | INTEGER_LITERAL
+
+/**
+ * Default value — assignment of a value expression.
+ *
+ * Design decisions: (infrastructure)
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "="
+ * Normalization: transparent — carries the expression
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L24 — = V(3.7)
+ *   packages/vehicle/battery.deal:L34 — = capacity / mass
+ */
+DefaultValue ::=
+    "=" Expression
+
+/**
+ * Inline body — a brace-enclosed block on a port or part usage.
+ * Used for port usages that contain <<redefines>> or other members.
+ *
+ * Design decisions: SD-3
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: InlineBody AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L77-80 —
+ *     out port hvOut : HVDCPort [1] {
+ *         <<redefines>> voltage = V(800);
+ *         <<redefines>> maxCurrent = A(350);
+ *     }
+ */
+InlineBody ::=
+    "{" ( AnnotationStatement | MemberDeclaration | OperatorStatement )* "}"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 14: Modifiers and Direction
+// Design decisions: SD-7, SD-8
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Modifier prefix — bare keyword that modifies the following element.
+ * Multiple modifiers can stack (e.g., "ordered" "part").
+ *
+ * Design decisions: SD-7
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "abstract", "derived", "readonly", "ordered", "nonunique",
+ *               "individual", "variation", "portion", "end", "ref"
+ * Normalization: transparent — boolean flags on the element
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L19 — (implicit: no modifier on BatteryCell)
+ *   packages/vehicle/battery.deal:L34 — derived attribute specificEnergy
+ *   packages/vehicle/battery.deal:L50 — ordered part cells : BatteryCell [48]
+ *   packages/vehicle/battery.deal:L65 — abstract (used in showcase? no — but design decision)
+ */
+_ModifierPrefix ::=
+    "abstract"
+    | "derived"
+    | "readonly"
+    | "ordered"
+    | "nonunique"
+    | "individual"
+    | "variation"
+    | "portion"
+    | "end"
+    | "ref"
+
+/**
+ * Direction prefix — indicates data flow direction on a port or attribute.
+ *
+ * Design decisions: SD-8
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "in", "out", "inout"
+ * Normalization: transparent — direction enum on the element
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L57 — in port coolantIn : CoolantPort [1];
+ *   packages/vehicle/battery.deal:L58 — out port coolantOut : CoolantPort [1];
+ *   packages/vehicle/battery.deal:L82 — inout port canBus : CANBus [1];
+ */
+_DirectionPrefix ::=
+    "in"
+    | "out"
+    | "inout"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 15: Structural Relationships (Tier 1 Operators)
+// Design decisions: SD-3, SD-4
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Structural relationship — tier 1 operator on a definition header.
+ * Appears after the definition name: part def Sedan <<specializes>> Vehicle
+ *
+ * Design decisions: SD-3, SD-4
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: DELIMITED_OPERATOR ("<<")
+ * Normalization: StructuralRelationship AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L65 — <<specializes>> ThermallyManaged
+ *   packages/interfaces/electrical.deal:L52 — <<specializes>> HVDCPort
+ *
+ * Ambiguity notes:
+ *   DELIMITED_OPERATOR is always "<<" ... ">>" — unique token type.
+ *   Never ambiguous with any other construct.
+ */
+StructuralRelationship ::=
+    DELIMITED_OPERATOR QualifiedName
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 16: Annotations (Tier 2 Operators and Standalone)
+// Design decisions: SD-4, SD-6, SD-15, SD-16, SIM-1
+// Layer: L3
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Annotation statement — any annotation inside a definition body.
+ * Two forms:
+ *   1. Category annotation:   @trace:<<satisfies>> Target { ... }
+ *   2. Standalone annotation: @confidence: 0.85
+ *                             @assumes: "text"
+ *                             @simulation:<<computes>> name { ... }
+ *
+ * Design decisions: SD-4, SD-6, SD-15
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "@" (ANNOTATION_PREFIX or ANNOTATION)
+ * Normalization: AnnotationStatement AST node
+ *
+ * Ambiguity notes:
+ *   "@" followed by IDENT ":" → ANNOTATION_PREFIX → CategoryAnnotation
+ *   "@" followed by IDENT (no ":") → ANNOTATION → StandaloneAnnotation
+ *   The lexer resolves this — emits ANNOTATION_PREFIX or ANNOTATION token.
+ */
+AnnotationStatement ::=
+    CategoryAnnotation
+    | StandaloneAnnotation
+
+/**
+ * Category annotation — @category:<<operator>> target { ... }
+ *
+ * Design decisions: SD-4, SD-6
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: ANNOTATION_PREFIX (@trace:, @connection:, @flow:, etc.)
+ * Normalization: CategoryAnnotation AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L37 —
+ *     @simulation:<<computes>> thermalRunaway { ... }
+ *   packages/vehicle/behaviors.deal:L25 —
+ *     @flow:<<flows to>> deliverPower { from: requestTorque }
+ *
+ * Ambiguity notes:
+ *   ANNOTATION_PREFIX ("@" IDENT ":") is a single lexer token.
+ *   Followed by DELIMITED_OPERATOR → category annotation.
+ */
+CategoryAnnotation ::=
+    ANNOTATION_PREFIX DELIMITED_OPERATOR NamespacePath? AnnotationBody?
+
+/**
+ * Standalone annotation — @keyword followed by a value.
+ *
+ * Design decisions: SD-15
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: ANNOTATION (@confidence, @assumes, @concerns, @rationale, @header, @see)
+ * Normalization: StandaloneAnnotation AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L20 — @confidence: 0.95
+ *   packages/vehicle/battery.deal:L21 — @rationale: "NMC 811 selected..."
+ *   packages/vehicle/battery.deal:L22 — @assumes: "Cell supplier delivers..."
+ *
+ * Value forms:
+ *   @keyword ":" Expression   — inline value after colon
+ *   @keyword ":" QuotedString — inline string value
+ *   @keyword                  — no value (flag annotation)
+ */
+StandaloneAnnotation ::=
+    ANNOTATION ( ":" AnnotationValue )? NL?
+
+/**
+ * Annotation value — what follows the colon in a standalone annotation.
+ *
+ * Design decisions: SD-15
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: STRING_LITERAL, SINGLE_QUOTED_STRING, TEMPLATE_LITERAL, INTEGER_LITERAL,
+ *               REAL_LITERAL, IDENT (qualified name)
+ * Normalization: transparent — expression or string
+ */
+AnnotationValue ::=
+    Expression
+
+/**
+ * Annotation body — brace-enclosed structured annotation content.
+ * Used for @simulation:<<computes>> and @flow:<<flows to>> bodies.
+ *
+ * Design decisions: SD-15, D-01, D-03 [phase 05.1]
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: AnnotationBody AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L23-28 —
+ *     @simulation:<<computes>> thermalRunaway {
+ *         equation: "T_cell > 150°C triggers thermal event";
+ *         tool: "ANSYS Fluent";
+ *         fidelity: "CFD";
+ *     }
+ *   packages/vehicle/behaviors.deal:L20-22 —
+ *     @flow:<<flows to>> deliverPower { from: requestTorque; }
+ *
+ * Interior syntax is key: value pairs. Keys may be IDENT or any keyword
+ * (see AnnotationKey). Field separator is ";" (canonical — D-01). "," is
+ * NOT a valid separator; the parser emits E0123 if "," appears as a field
+ * terminator. The trailing ";" before "}" is optional.
+ */
+AnnotationBody ::=
+    "{" AnnotationField* "}"
+
+/**
+ * Annotation field — key: value inside an annotation body.
+ *
+ * Design decisions: SD-15, D-01, D-03 [phase 05.1]
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: IDENT | _Keyword (any keyword is a legal field key — see AnnotationKey)
+ * Normalization: AnnotationField AST node
+ *
+ * Separator policy (D-01, I1 — phase 05.1):
+ *   ";" is the CANONICAL field terminator. The parser explicitly consumes it.
+ *   "," is NOT a separator alias — using "," as a field separator emits a
+ *   diagnostic (E0123). The showcase uses ";" throughout (e.g. battery.deal:40-43).
+ *   The ";" is optional before the closing "}" of the enclosing AnnotationBody.
+ *
+ * Keyword key policy (D-03, I2 — phase 05.1):
+ *   Field keys may be any identifier OR any reserved keyword (AnnotationKey below).
+ *   This is required because the showcase uses keyword-valued keys such as
+ *   `from:` in @flow annotation bodies (behaviors.deal:29).
+ *   The lexer does NOT treat annotation key positions specially (flat-reserved).
+ *   The parser explicitly accepts AnnotationKey ::= IDENT | _Keyword.
+ */
+AnnotationField ::=
+    AnnotationKey ":" Expression ";"?
+
+/**
+ * Annotation key — identifier or reserved keyword used as a field name.
+ *
+ * Design decisions: D-03, I2 [phase 05.1]
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: IDENT | _Keyword
+ * Normalization: transparent (the token text is the key name)
+ *
+ * Rationale: the DEAL lexer is flat-reserved — keywords such as "from", "to",
+ * "via", "method", "status" etc. always produce keyword tokens, never IDENT.
+ * A parser that accepted only IDENT as a field key would silently fail on
+ * `@flow:<<flows to>> deliverPower { from: requestTorque }`. The parser
+ * (parser_deal.zig:1908) already accepts `key_tok.tag == .ident or isKeyword(key_tok.tag)`;
+ * this production makes that accept explicit in the grammar.
+ * See lexical.ebnf §_Keyword for the complete keyword enumeration.
+ */
+AnnotationKey ::=
+    IDENT | _Keyword
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 17: Verification Block (Requirement-specific)
+// Design decisions: SD-20
+// Layer: L3
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Verification block — declares how a requirement can be verified.
+ * Only valid inside requirement definitions.
+ *
+ * Design decisions: SD-20
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "verification"
+ * Normalization: VerificationBlock AST node
+ *
+ * Showcase example:
+ *   packages/requirements/system.deal:L30-35 —
+ *     verification {
+ *         accepts: [simulation, test];
+ *         rejects: [analysis, inspection];
+ *         threshold: minRange;
+ *         operator: ">=";
+ *     }
+ *
+ * Ambiguity notes:
+ *   "verification" is a unique keyword — only appears in this context.
+ */
+VerificationBlock ::=
+    "verification" "{" VerificationField* "}"
+
+/**
+ * Verification field — one of: accepts, rejects, threshold, operator, conditions.
+ *
+ * Design decisions: SD-20
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   "accepts"    → method list
+ *   "rejects"    → method list
+ *   "threshold"  → attribute name or array
+ *   "operator"   → comparison operator string or array
+ *   "conditions" → conditions object
+ * Normalization: VerificationField AST node
+ *
+ * Showcase example:
+ *   packages/requirements/system.deal:L31 — accepts: [simulation, test];
+ *   packages/requirements/system.deal:L33 — threshold: minRange;
+ *   packages/requirements/system.deal:L34 — operator: ">=";
+ *   packages/requirements/system.deal:L69-71 —
+ *     conditions: { ambient: [degC(25), degC(-10), degC(-30)] }
+ */
+VerificationField ::=
+    _VerificationKey ":" VerificationValue ";"
+
+_VerificationKey ::=
+    "accepts"
+    | "rejects"
+    | "threshold"
+    | "operator"
+    | "conditions"
+
+/**
+ * Verification value — varies by field type.
+ *
+ * Design decisions: SD-20
+ * Layer: L3
+ * Marker: [ext]
+ * FIRST tokens: "[" (array), IDENT (name), STRING_LITERAL,
+ *               SINGLE_QUOTED_STRING, "{"
+ * Normalization: transparent
+ *
+ * Forms:
+ *   [ident, ident, ...]     — method list (accepts/rejects) or name array (threshold)
+ *   ident                    — single attribute name (threshold)
+ *   "string"                 — operator string
+ *   ["string", "string"]    — operator array (paired thresholds)
+ *   { key: [values] }       — conditions object
+ */
+VerificationValue ::=
+    VerificationArray
+    | VerificationObject
+    | Expression
+
+/**
+ * Verification array — [ item, item, ... ]
+ */
+VerificationArray ::=
+    "[" _VerificationArrayItem ( "," _VerificationArrayItem )* "]"
+
+_VerificationArrayItem ::=
+    IDENT
+    | QuotedString
+    | FunctionCallExpression
+
+/**
+ * Verification object — { key: value, ... }
+ * Used for conditions blocks.
+ */
+VerificationObject ::=
+    "{" VerificationObjectField ( ","? VerificationObjectField )* "}"
+
+VerificationObjectField ::=
+    IDENT ":" VerificationValue
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 18: Precondition and Postcondition Blocks (Use Case)
+// Design decisions: SD-18
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Precondition block — boolean expression that must hold before a use case.
+ *
+ * Design decisions: SD-18
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "precondition"
+ * Normalization: PreconditionBlock AST node
+ *
+ * Showcase example:
+ *   packages/use-cases/driving.deal:L24-26 —
+ *     precondition batteryFull {
+ *         vehicle.battery.soc >= 0.95
+ *     }
+ *   packages/use-cases/charging.deal:L46-49 —
+ *     precondition coldBattery {
+ *         vehicle.battery.soc <= startSOC
+ *         AND vehicle.battery.packTemp <= degC(5)
+ *     }
+ */
+PreconditionBlock ::=
+    "precondition" IDENT "{" ConditionExpression+ "}"
+
+/**
+ * Postcondition block — boolean expression that must hold after a use case.
+ *
+ * Design decisions: SD-18
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "postcondition"
+ * Normalization: PostconditionBlock AST node
+ *
+ * Showcase example:
+ *   packages/use-cases/driving.deal:L28-30 —
+ *     postcondition arrived {
+ *         vehicle.distanceTraveled >= tripDistance
+ *     }
+ */
+PostconditionBlock ::=
+    "postcondition" IDENT "{" ConditionExpression+ "}"
+
+/**
+ * Condition expression — a boolean expression optionally joined by AND/OR.
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT (path expression start), "NOT"
+ * Normalization: ConditionExpression AST node
+ *
+ * Showcase example:
+ *   vehicle.battery.soc >= 0.95
+ *   vehicle.battery.soc <= startSOC AND vehicle.battery.packTemp <= degC(5)
+ */
+ConditionExpression ::=
+    ComparisonExpression ( ( "AND" | "OR" ) ComparisonExpression )*
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 19: Expressions
+// Design decisions: SD-13, PS-6 (unit function calls), (deferred decisions)
+// Layer: L2
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Expression — the general expression production.
+ * Covers arithmetic, comparison, logical, path expressions,
+ * function calls, literals, and template interpolation.
+ *
+ * Design decisions: SD-13, PS-6
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT, INTEGER_LITERAL, REAL_LITERAL, STRING_LITERAL,
+ *               SINGLE_QUOTED_STRING,
+ *               TEMPLATE_LITERAL, TEMPLATE_HEAD, BOOLEAN_LITERAL,
+ *               "(", "-", "NOT", "!"
+ * Normalization: Expression AST node
+ *
+ * Precedence (lowest to highest):
+ *   1. Logical OR
+ *   2. Logical AND
+ *   3. Equality (==, !=)
+ *   4. Comparison (>, <, >=, <=)
+ *   5. Additive (+, -)
+ *   6. Multiplicative (*, /)
+ *   7. Unary (-, NOT, !)
+ *   8. Postfix (function call, member access)
+ *   9. Primary (literals, identifiers, grouping)
+ *
+ * Note: Full expression grammar is a standard recursive-descent
+ * precedence climbing design. The implementation may use Pratt parsing,
+ * but the grammar is written as recursive productions for clarity.
+ */
+Expression ::=
+    LogicalOrExpression
+
+LogicalOrExpression ::=
+    LogicalAndExpression ( "OR" LogicalAndExpression )*
+
+LogicalAndExpression ::=
+    EqualityExpression ( "AND" EqualityExpression )*
+
+EqualityExpression ::=
+    ComparisonExpression ( ( "==" | "!=" ) ComparisonExpression )*
+
+ComparisonExpression ::=
+    AdditiveExpression ( ( ">=" | "<=" | ">" | "<" ) AdditiveExpression )*
+
+AdditiveExpression ::=
+    MultiplicativeExpression ( ( "+" | "-" ) MultiplicativeExpression )*
+
+MultiplicativeExpression ::=
+    UnaryExpression ( ( "*" | "/" ) UnaryExpression )*
+
+UnaryExpression ::=
+    ( "-" | "NOT" | "!" ) UnaryExpression
+    | PostfixExpression
+
+/**
+ * Postfix expression — member access and function calls.
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: same as PrimaryExpression
+ * Normalization: transparent
+ *
+ * Ambiguity notes:
+ *   After a primary expression:
+ *     "." → member access (continue postfix chain)
+ *     "(" → function call
+ *     other → done
+ */
+PostfixExpression ::=
+    PrimaryExpression ( "." IDENT | "(" _ArgumentList? ")" )*
+
+/**
+ * Primary expression — atoms and grouping.
+ *
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens per alternative:
+ *   IDENT           → identifier or qualified name
+ *   INTEGER_LITERAL → integer
+ *   REAL_LITERAL    → real number
+ *   STRING_LITERAL  → string
+ *   SINGLE_QUOTED_STRING → string alias
+ *   TEMPLATE_LITERAL → template string (no interpolation)
+ *   TEMPLATE_HEAD   → template string (with interpolation)
+ *   BOOLEAN_LITERAL → true/false
+ *   "("             → grouping
+ * Normalization: transparent
+ */
+PrimaryExpression ::=
+    FunctionCallExpression
+    | IDENT
+    | INTEGER_LITERAL
+    | REAL_LITERAL
+    | QuotedString
+    | TEMPLATE_LITERAL
+    | TemplateExpression
+    | BOOLEAN_LITERAL
+    | "(" Expression ")"
+
+/**
+ * Function call expression — name(args).
+ * Covers unit function calls: kg(1500), V(800), km(483)
+ * and general function calls.
+ *
+ * Design decisions: SD-13, PS-6
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: IDENT (followed by "(")
+ * Normalization: FunctionCallExpression AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/battery.deal:L24 — V(3.7)
+ *   packages/vehicle/battery.deal:L25 — kWh(0.186)
+ *   packages/requirements/system.deal:L27 — km(483)
+ *
+ * Ambiguity notes:
+ *   IDENT followed by "(" → function call.
+ *   IDENT not followed by "(" → plain identifier.
+ *   LL(2) justified: need to see "(" after IDENT.
+ */
+FunctionCallExpression ::=
+    IDENT "(" _ArgumentList? ")"
+
+/**
+ * Argument list — comma-separated expressions.
+ */
+_ArgumentList ::=
+    Expression ( "," Expression )*
+
+/**
+ * Template expression — backtick template with interpolation.
+ *
+ * Design decisions: LM-3, SD-12
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: TEMPLATE_HEAD
+ * Normalization: TemplateExpression AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/motor.deal (implied by @concerns template usage)
+ *   model/variants/performance.dealx — @concerns: `Range margin at ${...}%`
+ */
+TemplateExpression ::=
+    TEMPLATE_HEAD Expression ( TEMPLATE_MIDDLE Expression )* TEMPLATE_TAIL

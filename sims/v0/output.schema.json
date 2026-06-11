@@ -1,0 +1,49 @@
+{
+  "$id": "https://deal-lang.org/spec/sims/v0/output.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Normative JSON Schema for DEAL Simulation Protocol v0 output.json. Every simulation output artifact MUST validate against this schema. See spec/sims/v0/README.md for the human-readable reference.",
+  "properties": {
+    "deal_sim_protocol": {
+      "const": "v0",
+      "description": "Protocol version tag. Always 'v0' for artifacts conforming to this schema."
+    },
+    "exit_code": {
+      "description": "Simulation exit code. 0 = success, non-zero = failure. See README.md exit-code table.",
+      "type": "integer"
+    },
+    "outputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/OutputValue"
+      },
+      "description": "Map from output parameter name to value+unit pair. Keys MUST be alphabetically sorted (D-18).",
+      "type": "object"
+    },
+    "v": {
+      "const": 1,
+      "description": "Document format version. Always 1 for DEAL Simulation Protocol v0.",
+      "type": "integer"
+    }
+  },
+  "required": ["deal_sim_protocol", "exit_code", "outputs", "v"],
+  "title": "DEAL Simulation Protocol v0 — output.json",
+  "type": "object",
+  "$defs": {
+    "OutputValue": {
+      "additionalProperties": false,
+      "description": "A single simulation output value with optional unit annotation.",
+      "properties": {
+        "unit": {
+          "description": "Optional unit string (e.g. 'W', 'degC'). Advisory for external tools; enforced by Zig dimensional checker for Zig-internal sims.",
+          "type": "string"
+        },
+        "value": {
+          "description": "The computed scalar value for this output parameter."
+        }
+      },
+      "required": ["value"],
+      "title": "OutputValue",
+      "type": "object"
+    }
+  }
+}

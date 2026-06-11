@@ -1,0 +1,49 @@
+{
+  "$id": "https://deal-lang.org/spec/sims/v0/input.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Normative JSON Schema for DEAL Simulation Protocol v0 input.json. Every simulation input artifact MUST validate against this schema. See spec/sims/v0/README.md for the human-readable reference.",
+  "properties": {
+    "deal_sim_protocol": {
+      "const": "v0",
+      "description": "Protocol version tag. Always 'v0' for artifacts conforming to this schema."
+    },
+    "inputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/InputValue"
+      },
+      "description": "Map from input parameter name to value+unit pair. Keys MUST be alphabetically sorted (D-18).",
+      "type": "object"
+    },
+    "model_path": {
+      "description": "Workspace-relative path to the DEAL model file that produced these inputs (D-70).",
+      "type": "string"
+    },
+    "v": {
+      "const": 1,
+      "description": "Document format version. Always 1 for DEAL Simulation Protocol v0.",
+      "type": "integer"
+    }
+  },
+  "required": ["deal_sim_protocol", "inputs", "v"],
+  "title": "DEAL Simulation Protocol v0 — input.json",
+  "type": "object",
+  "$defs": {
+    "InputValue": {
+      "additionalProperties": false,
+      "description": "A single simulation input value with optional unit annotation.",
+      "properties": {
+        "unit": {
+          "description": "Optional unit string (e.g. 'kg', 'V', 'ohm'). Advisory for external tools; enforced by Zig dimensional checker for Zig-internal sims.",
+          "type": "string"
+        },
+        "value": {
+          "description": "The resolved scalar value for this input parameter."
+        }
+      },
+      "required": ["value"],
+      "title": "InputValue",
+      "type": "object"
+    }
+  }
+}
