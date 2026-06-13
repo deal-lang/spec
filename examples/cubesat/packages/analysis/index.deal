@@ -1,0 +1,23 @@
+@header {
+    path:       packages/analysis/index.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Analysis layer: calc defs (orbit-average power, DoD, link margin,
+ * momentum storage, GSD) with SD-23 return contracts, and constraint defs
+ * referenced from those contracts.
+ *
+ * Phase 4 begins with a CLI acceptance probe of SD-21/22/23 syntax;
+ * anything rejected demotes to the frontier set with an issue filed.
+ */
+package analysis;
+
+// Phase 4 exports — uncomment as files land:
+// export calcs.{OrbitAvgPower, DepthOfDischarge, LinkMargin, MomentumStorage, GroundSampleDistance};
+// export constraints.{PositiveMargin, SafeDoD, WheelMomentumBound};

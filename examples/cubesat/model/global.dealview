@@ -1,0 +1,26 @@
+@header {
+    path:       model/global.dealview
+    schema:     dealview/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/**
+ * HALCYON — workspace theme stub (GV-9 theme layer).
+ *
+ * Type-level defaults only; NO positions (geometry is view state and
+ * lives in per-view files). Populated properly in Phase 8 with semantic
+ * color tokens for power / data / rf / thermal domains.
+ *
+ * Views are model-silent (GV-13): nothing here normalizes to KerML, and
+ * deleting any .dealview must never affect `deal build`.
+ */
+
+// ─── Semantic color tokens (Phase 8) ────────────────────────────
+// power:   accent
+// data:    base
+// rf:      accent
+// thermal: muted

@@ -1,0 +1,21 @@
+@header {
+    path:       packages/requirements/index.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Requirement chain: stakeholder needs → mission requirements → system
+ * requirements, every verification method (simulation/test/analysis/
+ * inspection) represented.
+ */
+package requirements;
+
+// Phase 3 exports — uncomment as files land:
+// export needs.{NEED_IMAGERY, NEED_REVISIT, NEED_DATA_DELIVERY, NEED_LIFETIME, NEED_LAUNCH_COMPAT};
+// export mission.{REQ_MIS_001, REQ_MIS_002, REQ_MIS_003, REQ_MIS_004};
+// export system.{REQ_SYS_001, REQ_SYS_002, REQ_SYS_003, REQ_SYS_004, REQ_SYS_005, REQ_SYS_006};

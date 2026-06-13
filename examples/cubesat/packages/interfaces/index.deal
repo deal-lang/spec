@@ -1,0 +1,21 @@
+@header {
+    path:       packages/interfaces/index.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Shared interface vocabulary: power, data, RF, and thermal ports and
+ * interface definitions used across the HALCYON bus.
+ */
+package interfaces;
+
+// Phase 1 exports — uncomment as files land:
+// export power.{UnregulatedBusPort, SwitchedRailPort, ArrayInputPort, UmbilicalPort};
+// export data.{CANPort, SpaceWirePort, LVDSPort, CANBus, SpaceWireLink};
+// export rf.{UHFPort, XBandPort, RFCoaxLink};
+// export thermal.{ConductiveStrapPort, HeaterCircuitPort, ThermallyManaged};

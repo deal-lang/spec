@@ -1,0 +1,21 @@
+@header {
+    path:       packages/use-cases/index.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Operational use cases: imaging pass, downlink pass, safe-mode entry and
+ * recovery. Scenario steps here stay within today's grammar; the frontier
+ * activity model (packages/behaviors) formalizes the same flows.
+ */
+package use_cases;
+
+// Phase 3 exports — uncomment as files land:
+// export imaging.{ImagingPass, TargetCollection};
+// export downlink.{DownlinkPass, StoreAndForward};
+// export safemode.{SafeModeEntry, SafeModeRecovery};

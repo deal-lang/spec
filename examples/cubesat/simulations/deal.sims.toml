@@ -1,0 +1,16 @@
+# HALCYON simulation registry — v0 JSON contract (spec/sims/v0/).
+# Populated in Phase 6. Planned entries:
+#
+#   [simulations.eps_energy_balance]   tool=python  entry=power/eps_energy_balance.py
+#   [simulations.spacecraft_thermal]   tool=python  entry=thermal/spacecraft_thermal.py
+#   [simulations.link_budget]          tool=python  entry=comms/link_budget.py
+#   [simulations.detumble_bdot]        tool=matlab  entry=adcs/detumble_bdot.m
+#   [simulations.pointing_jitter]      tool=matlab  entry=adcs/pointing_jitter.m
+#   [simulations.eclipse_power]        tool=matlab  entry=orbit/eclipse_power.m
+#
+# Each binds_to a part carrying an @simulation:<<computes>> annotation and
+# declares inputs/outputs with units; evidence consumed by satisfy blocks in
+# model/traceability.dealx.
+
+[registry]
+schema = "deal-sims/0.1"

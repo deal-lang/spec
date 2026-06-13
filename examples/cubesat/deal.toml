@@ -1,0 +1,56 @@
+[project]
+name = "halcyon"
+version = "0.1.0"
+schema = "deal/0.1"
+marking = "Unclassified"
+description = "HALCYON 6U Earth-observation CubeSat — DEAL language showcase #2 (full-construct coverage + deal-view translation source)"
+
+[workspace]
+# CORE packages only. packages/behaviors is FRONTIER (state machines,
+# activity flows — written to locked BH-1..BH-7 designs ahead of grammar
+# landing) and is deliberately excluded from the default check set so the
+# core model stays `deal check`-clean. Check it explicitly with:
+#   deal parse packages/behaviors
+packages = [
+    "packages/interfaces",
+    "packages/spacecraft",
+    "packages/requirements",
+    "packages/use-cases",
+    "packages/analysis",
+]
+
+[workspace.aliases]
+spacecraft = "packages/spacecraft"
+interfaces = "packages/interfaces"
+reqs       = "packages/requirements"
+use_cases  = "packages/use-cases"
+analysis   = "packages/analysis"
+
+[dependencies]
+deal-std = "0.1"
+
+[simulations]
+registry = "simulations/deal.sims.toml"
+cache_dir = ".deal/simulations"
+
+[views]
+# Workspace theme — type-level defaults applied to every view (GV-9).
+theme = "model/global.dealview"
+
+# Co-location handles: model/halcyon.dealview, model/traceability.dealview,
+# model/variants/{multispec,hyperspec}.dealview.
+#
+# Cross-cutting views (Phase 8) — uncomment as each lands:
+# structure-bdd    = { source = "packages/spacecraft/index.deal",  view = "model/views/structure-bdd.dealview" }
+# power-ibd        = { source = "model/halcyon.dealx",             view = "model/views/power-ibd.dealview" }
+# data-ibd         = { source = "model/halcyon.dealx",             view = "model/views/data-ibd.dealview" }
+# icd              = { source = "model/halcyon.dealx",             view = "model/views/icd.dealview" }
+# modes-fsm        = { source = "packages/behaviors/modes.deal",      view = "model/views/modes-fsm.dealview" }      # frontier
+# imaging-activity = { source = "packages/behaviors/activities.deal", view = "model/views/imaging-activity.dealview" } # frontier
+# variants         = { source = "model/variants/multispec.dealx",  view = "model/views/variants.dealview" }
+# full-system      = { source = "model/halcyon.dealx",             view = "model/views/full-system.dealview" }
+
+[build.targets]
+sysml-v2 = { format = "json", output = "build/sysml-v2/" }
+reqif = { format = "xml", output = "build/reqif/" }
+docs = { format = "html", output = "build/docs/", template = "program-review" }

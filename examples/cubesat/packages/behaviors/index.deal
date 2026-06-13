@@ -1,0 +1,29 @@
+@header {
+    path:       packages/behaviors/index.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * FRONTIER PACKAGE — excluded from [workspace].packages in deal.toml.
+ *
+ * Mission-mode state machine and imaging-pass activity, written to the
+ * LOCKED behavior designs (BH-1..BH-7, DESIGN-DECISIONS.md) ahead of the
+ * grammar productions landing. Check explicitly:
+ *   deal parse packages/behaviors   (expected to fail until BH grammar lands)
+ *
+ * KerML mapping (anticipated): action def → Behavior (8.3.4.6.2) with
+ * sub-actions as Step (8.3.4.6.3); `->` chains → Succession (8.3.4.5.4);
+ * `~>` item flow → SuccessionFlow (8.3.4.9.6). State machines are
+ * SysML-level — transitions/entry/exit have no KerML metaclass and sit
+ * outside the 84-atom accounting.
+ */
+package behaviors;
+
+// Phase 7 exports — uncomment as files land:
+// export modes.{MissionModes};
+// export activities.{ImagingPassActivity};

@@ -1,0 +1,33 @@
+@header {
+    path:       packages/spacecraft/index.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * HALCYON spacecraft bus — part definitions for all subsystems.
+ *
+ * NOTE: block comment, not doc comment — DealFile ::= HeaderBlock?
+ * PackageDeclaration … permits no doc comment between @header and
+ * `package` (doc comments attach to definitions only).
+ *
+ * KerML mapping: a DEAL `package` normalizes directly (M1) to KerML Package
+ * (8.3.4.13.4); the sysml-v2 emitter folds the workspace into a single
+ * top-level Package today (D-24), with nested packages as owned members.
+ * The `@header` block above is a configuration-management envelope and is
+ * deliberately model-silent (FS-2) — it never reaches the KerML graph.
+ */
+package spacecraft;
+
+// Phase 2 exports — uncomment as files land:
+// export structure.{BusFrame, DeploymentSwitch, SeparationSpring};
+// export eps.{SolarArray, BatteryPack, PowerDistributionUnit};
+// export adcs.{ReactionWheel, Magnetorquer, StarTracker, IMU, SunSensor, GPSReceiver};
+// export comms.{UHFTransceiver, XBandTransmitter, AntennaUHF, AntennaXBand};
+// export obc.{OnboardComputer, MassMemory};
+// export payload.{MultispectralImager, PayloadDataHandler};
+// export thermal.{HeaterCircuit, RadiatorPanel, ThermistorNet};
