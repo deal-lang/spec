@@ -1,0 +1,120 @@
+@header {
+    path:       packages/interfaces/power.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package interfaces.power;
+
+import deal.std.units.{V, A, W, percent};
+
+/**
+ * Bus power telemetry sample — voltage/current/SoC tuple reported by the
+ * EPS at 1 Hz on the housekeeping beacon.
+ *
+ * KerML mapping: `attribute def` normalizes M1 to KerML DataType
+ * (8.3.4.1.2) — the value leg of the DataType/Class/Structure trichotomy
+ * DEAL surfaces as attribute/item/part. Known emitter quirk: the sysml-v2
+ * target currently emits AttributeUsage for attribute defs rather than
+ * AttributeDefinition.
+ */
+attribute def PowerTelemetry {
+    public (
+        attribute busVoltage : Voltage [1];
+        attribute busCurrent : Current [1];
+        attribute stateOfCharge : Real [1];
+    )
+}
+
+/**
+ * Unregulated battery bus — direct 4S Li-ion pack voltage distributed to
+ * the PDU and high-power loads (X-band TX, ADCS actuators).
+ *
+ * KerML mapping: `port def` normalizes M1 to SysML PortDefinition (KerML
+ * Structure, 8.3.4.3.2); each usage `port x : UnregulatedBusPort` becomes
+ * a PortUsage (KerML Feature, 8.3.3.3.4) whose FeatureTyping relationship
+ * object is synthesized from the `: Type` annotation (M2, 8.3.3.3.7) —
+ * canonical "nesting DEAL handles without authoring". Both ends emitted by
+ * `deal build --target sysml-v2` today.
+ */
+port def UnregulatedBusPort {
+    @assumes: "4S Li-ion: 12.0-16.8 V across full charge envelope"
+    public (
+        attribute voltage : Voltage [1] = V(14.8);
+        attribute maxCurrent : Current [1];
+        derived attribute maxPower : Power = voltage * maxCurrent;
+    )
+}
+
+/**
+ * Regulated, switchable power rail from the PDU. Each load sits behind a
+ * latching current limiter; the PDU exposes one of these per load (the
+ * same-source connector bundling case in the power IBD view).
+ */
+port def SwitchedRailPort {
+    public (
+        attribute voltage : Voltage [1];
+        attribute currentLimit : Current [1];
+        attribute switchable : Boolean [1] = true;
+        derived attribute railPower : Power = voltage * currentLimit;
+    )
+}
+
+/**
+ * 3.3 V logic rail.
+ *
+ * KerML mapping: `<<redefines>>` on an inherited attribute lowers M1 to
+ * Redefinition (8.3.3.3.8), emitted in the ownedRelationship set today —
+ * here pinning the rail voltage a specializing port definition inherits
+ * from SwitchedRailPort. `<<specializes>>` itself lowers to
+ * Subclassification (8.3.3.2.3).
+ */
+port def Rail3V3 <<specializes>> SwitchedRailPort {
+    public (
+        <<redefines>> voltage = V(3.3);
+    )
+}
+
+/** 5 V avionics rail. */
+port def Rail5V <<specializes>> SwitchedRailPort {
+    public (
+        <<redefines>> voltage = V(5.0);
+    )
+}
+
+/** 12 V actuator/payload rail. */
+port def Rail12V <<specializes>> SwitchedRailPort {
+    public (
+        <<redefines>> voltage = V(12.0);
+    )
+}
+
+/**
+ * Solar array string input to the EPS MPPT stage. One per deployed wing
+ * plus one body-mounted string.
+ */
+port def ArrayInputPort {
+    @rationale: "Per-string MPPT tolerates partial shadowing during slews"
+    public (
+        attribute openCircuitVoltage : Voltage [1];
+        attribute shortCircuitCurrent : Current [1];
+        attribute mppVoltage : Voltage [1];
+        attribute mppCurrent : Current [1];
+        derived attribute mppPower : Power = mppVoltage * mppCurrent;
+    )
+}
+
+/**
+ * Ground-support umbilical: pre-flight charge path plus remove-before-
+ * flight / deployment-switch inhibit sensing (launch-provider requirement).
+ */
+port def UmbilicalPort {
+    public (
+        attribute chargeVoltage : Voltage [1] = V(16.8);
+        attribute chargeCurrentLimit : Current [1] = A(2.0);
+        attribute rbfInhibit : Boolean [1] = true;
+    )
+}

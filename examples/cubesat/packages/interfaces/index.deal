@@ -14,8 +14,7 @@
  */
 package interfaces;
 
-// Phase 1 exports — uncomment as files land:
-// export power.{UnregulatedBusPort, SwitchedRailPort, ArrayInputPort, UmbilicalPort};
-// export data.{CANPort, SpaceWirePort, LVDSPort, CANBus, SpaceWireLink};
-// export rf.{UHFPort, XBandPort, RFCoaxLink};
-// export thermal.{ConductiveStrapPort, HeaterCircuitPort, ThermallyManaged};
+export power.{PowerTelemetry, UnregulatedBusPort, SwitchedRailPort, Rail3V3, Rail5V, Rail12V, ArrayInputPort, UmbilicalPort};
+export data.{CANPort, CANBus, SpaceWirePort, SpaceWireLink, TelemetryFrames, CommandPackets, ImageData};
+export rf.{UHFPort, XBandPort, RFCoaxLink};
+export thermal.{ConductiveStrapPort, HeaterCircuitPort, ThermallyManaged};

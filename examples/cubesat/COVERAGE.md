@@ -25,7 +25,7 @@ exists in the named file AND (core) passes `deal check`.
 | ☐ | port-body `<<redefines>>` | `interfaces/power.deal` (switched rail) | Redefinition (M1 · impl) |
 | ☐ | `in/out/inout` directions | `interfaces/data.deal` | FeatureDirectionKind (M5 · impl on usages); conjugation derived at export (M2) |
 | ☐ | `interface def` | `interfaces/data.deal` (SpaceWire) | InterfaceDefinition (M1 · impl, SysML-level) |
-| ☐ | `attribute def` | `interfaces/index.deal` | DataType (M1 · impl — emitter quirk: emits AttributeUsage) |
+| ☐ | `attribute def` | `interfaces/power.deal` (PowerTelemetry) | DataType (M1 · impl — emitter quirk: emits AttributeUsage) |
 | ☐ | attribute usage + default `= expr` | `spacecraft/eps.deal` | AttributeUsage (M1 · impl); FeatureValue default (M1 · designed) |
 | ☐ | `derived attribute` | `spacecraft/eps.deal` | Feature isDerived=true (M1 · impl) |
 | ☐ | `item def` | `spacecraft/payload.deal` (ImageProduct) | Class / ItemDefinition (M1 · impl) |

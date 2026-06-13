@@ -1,0 +1,57 @@
+@header {
+    path:       packages/interfaces/rf.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package interfaces.rf;
+
+import deal.std.units.{MHz, GHz, W, ohm};
+
+// NOTE: decibel quantities (dB, dBm, dBi, dBW) are carried as Real with the
+// scale named in the attribute — deal-std/0.1 has no logarithmic units yet
+// (candidate stdlib addition; logarithmic ratios are dimensionless so the
+// dimensional checker is not violated).
+
+/**
+ * UHF TT&C transceiver RF port — uplink commands, downlink housekeeping
+ * beacon, amateur band per IARU coordination.
+ */
+port def UHFPort {
+    @assumes: "IARU-coordinated 435-438 MHz allocation; half-duplex"
+    public (
+        attribute centerFrequency : Frequency [1] = MHz(437.25);
+        attribute txPower : Power [1] = W(2.0);
+        attribute modulation : String [1] = "GMSK";
+        attribute bitRate : Integer [1] = 9600;
+    )
+}
+
+/**
+ * X-band payload downlink port. EIRP is the link-budget input consumed by
+ * simulations/comms/link_budget.py via the satisfy evidence chain.
+ */
+port def XBandPort {
+    public (
+        attribute centerFrequency : Frequency [1] = GHz(8.2);
+        attribute txPower : Power [1] = W(8.0);
+        attribute eirp_dBW : Real [1];
+        attribute symbolRate : Integer [1] = 25000000;
+        attribute modulation : String [1] = "OQPSK";
+    )
+}
+
+/**
+ * Coaxial RF run between a transmitter and its antenna, with the loss
+ * budget the link-budget calc subtracts from transmit EIRP.
+ */
+connection def RFCoaxLink {
+    public (
+        attribute impedance : Resistance [1] = ohm(50);
+        attribute insertionLoss_dB : Real [1];
+        attribute connectorType : String [1] = "SMA";
+    )
+}

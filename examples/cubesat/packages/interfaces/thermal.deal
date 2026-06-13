@@ -1,0 +1,55 @@
+@header {
+    path:       packages/interfaces/thermal.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package interfaces.thermal;
+
+import deal.std.units.{degC, W, V, kg};
+
+/**
+ * Conductive thermal strap attachment — passive heat path from a
+ * dissipating unit to the radiator panel (no fluid loops on a 6U bus).
+ * Conductance is carried as Real in W/K: deal-std/0.1 has no composite
+ * thermal-conductance unit yet (candidate stdlib addition).
+ */
+port def ConductiveStrapPort {
+    public (
+        attribute conductance_W_per_K : Real [1];
+        attribute maxHeatFlow : Power [1];
+    )
+}
+
+/**
+ * Survival/operational heater circuit, PDU-switched and thermostat-backed.
+ */
+port def HeaterCircuitPort {
+    public (
+        attribute heaterPower : Power [1] = W(4.5);
+        attribute supplyVoltage : Voltage [1] = V(12.0);
+        attribute setpoint : Temperature [1] = degC(-5);
+        attribute hysteresis : Temperature [1] = degC(3);
+    )
+}
+
+/**
+ * Implemented by every unit whose dissipation or temperature limits the
+ * thermal design — battery, OBC, imager, X-band TX. Feeds the 6-node
+ * lumped model in simulations/thermal/spacecraft_thermal.py.
+ */
+interface def ThermallyManaged {
+    public (
+        in port strapIn : ConductiveStrapPort [0..1];
+        out port strapOut : ConductiveStrapPort [1];
+        attribute minOperatingTemp : Temperature [1];
+        attribute maxOperatingTemp : Temperature [1];
+        attribute minSurvivalTemp : Temperature [1];
+        attribute maxSurvivalTemp : Temperature [1];
+        attribute thermalMass : Mass [1];
+        derived attribute heatGenerated : Power;
+    )
+}

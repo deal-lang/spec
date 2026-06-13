@@ -1,0 +1,104 @@
+@header {
+    path:       packages/interfaces/data.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package interfaces.data;
+
+import deal.std.units.{MHz};
+
+/**
+ * CAN bus node attachment point (housekeeping bus).
+ */
+port def CANPort {
+    public (
+        attribute nodeId : Integer [1];
+        attribute termination : Boolean [1] = false;
+    )
+}
+
+/**
+ * Controller Area Network housekeeping bus shared by OBC, EPS, ADCS, and
+ * COMMS microcontrollers.
+ *
+ * KerML mapping: `interface def` is SysML-level — it normalizes M1 to
+ * SysML InterfaceDefinition with no dedicated KerML atom; the KerML graph
+ * sees a Structure whose members are ordinary Features. Direction
+ * keywords on the port usages below lower to the FeatureDirectionKind
+ * enum (M5, 8.3.3.1.5); DEAL never authors a conjugated `~Type` — the
+ * "other end" of each directed port is derived at export (M2, 8.3.3.1.2),
+ * which is why `inout` is the honest direction for a multi-drop bus.
+ */
+interface def CANBus {
+    @assumes: "CAN 2.0B at 1 Mbps; 120-ohm split termination at bus ends"
+    public (
+        inout port bus : CANPort [2..32];
+        attribute baudRate : Integer [1] = 1000000;
+        attribute extendedIds : Boolean [1] = true;
+    )
+}
+
+/**
+ * SpaceWire payload-data port (point-to-point, LVDS signalling).
+ */
+port def SpaceWirePort {
+    public (
+        attribute linkRate : Frequency [1] = MHz(100);
+        attribute lanes : Integer [1] = 1;
+    )
+}
+
+/**
+ * SpaceWire link: imager → payload data handler → mass memory. The
+ * crossing-hop case against the CAN harness in the data IBD view.
+ */
+interface def SpaceWireLink {
+    public (
+        out port source : SpaceWirePort [1];
+        in port sink : SpaceWirePort [1];
+        attribute protocol : String [1] = "ECSS-E-ST-50-12C";
+    )
+}
+
+/**
+ * Realtime telemetry frame traffic on the housekeeping bus.
+ *
+ * KerML mapping: `flow def` targets the KerML behavioral-crossing pair
+ * Interaction/Flow (8.3.4.9.4/8.3.4.9.2) — an association that is also a
+ * behavior. Known partial (CS-5): the current sysml-v2 emitter lumps flow
+ * defs to ItemDefinition; FlowEnd and PayloadFeature reification
+ * (8.3.4.9.3/.5) is synthesized at normalization (M2), payload typing
+ * still an open item.
+ */
+flow def TelemetryFrames {
+    public (
+        attribute format : String [1] = "CCSDS 102.0-B-5 packet TM";
+        attribute beaconRate : Frequency [1];
+        attribute apidRange : String [1];
+    )
+}
+
+/**
+ * Telecommand packets, ground → OBC, authenticated.
+ */
+flow def CommandPackets {
+    public (
+        attribute format : String [1] = "CCSDS 232.0-B-4 TC";
+        attribute authenticated : Boolean [1] = true;
+    )
+}
+
+/**
+ * Multispectral image tiles, imager → mass memory → X-band downlink.
+ */
+flow def ImageData {
+    public (
+        attribute encoding : String [1] = "CCSDS 122.0-B-2 wavelet";
+        attribute tileBytes : Integer [1];
+        attribute compressionRatio : Real [1] = 4.0;
+    )
+}
