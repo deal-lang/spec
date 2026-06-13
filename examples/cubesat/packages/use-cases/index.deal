@@ -15,7 +15,6 @@
  */
 package use_cases;
 
-// Phase 3 exports — uncomment as files land:
-// export imaging.{ImagingPass, TargetCollection};
-// export downlink.{DownlinkPass, StoreAndForward};
-// export safemode.{SafeModeEntry, SafeModeRecovery};
+export imaging.{ImagingPass, TargetCollection};
+export downlink.{DownlinkPass, StoreAndForward};
+export safemode.{SafeModeEntry, SafeModeRecovery};

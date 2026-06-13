@@ -1,0 +1,69 @@
+@header {
+    path:       packages/requirements/needs.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package requirements.needs;
+
+/**
+ * Stakeholder need — the source of the requirement chain.
+ *
+ * KerML mapping: `need def` and `requirement def` are SysML-level
+ * (RequirementDefinition); the KerML graph beneath sees an Occurrence
+ * Structure whose members are Features. Emitted today. The trace from a
+ * need to the mission/system requirements that derive from it is an
+ * `allocate` relationship authored in model/traceability.dealx (Phase 5),
+ * which lowers to a KerML Dependency (M2, 8.3.2.2.2).
+ */
+need def NEED_IMAGERY {
+    public (
+        attribute text : String [1] = "Analysts shall receive cloud-free multispectral imagery of designated land targets at better than 25 m ground resolution.";
+        attribute source : String [1] = "MCN-2026-014 §2.1";
+        attribute stakeholder : String [1] = "Imagery Analysis Customer";
+        attribute priority : String [1] = "critical";
+    )
+}
+
+/** Targets must be revisited often enough to track change. */
+need def NEED_REVISIT {
+    public (
+        attribute text : String [1] = "Designated targets shall be revisited frequently enough to support change detection.";
+        attribute source : String [1] = "MCN-2026-014 §2.2";
+        attribute stakeholder : String [1] = "Imagery Analysis Customer";
+        attribute priority : String [1] = "high";
+    )
+}
+
+/** Collected imagery must reach the ground promptly. */
+need def NEED_DATA_DELIVERY {
+    public (
+        attribute text : String [1] = "Collected imagery shall be delivered to the ground segment within one day of collection.";
+        attribute source : String [1] = "MCN-2026-014 §2.4";
+        attribute stakeholder : String [1] = "Ground Segment / Customer";
+        attribute priority : String [1] = "high";
+    )
+}
+
+/** The mission must last long enough to return its investment. */
+need def NEED_LIFETIME {
+    public (
+        attribute text : String [1] = "The spacecraft shall remain operational for the full funded mission duration in the LEO environment.";
+        attribute source : String [1] = "MCN-2026-014 §3.1";
+        attribute stakeholder : String [1] = "Program Management";
+        attribute priority : String [1] = "critical";
+    )
+}
+
+/** The spacecraft must fit and safely fly on a rideshare. */
+need def NEED_LAUNCH_COMPAT {
+    public (
+        attribute text : String [1] = "The spacecraft shall conform to the 6U dispenser interface and rideshare safety requirements.";
+        attribute source : String [1] = "MCN-2026-014 §3.4";
+        attribute stakeholder : String [1] = "Launch Provider / Safety";
+        attribute priority : String [1] = "critical";
+    )
+}

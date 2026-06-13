@@ -1,0 +1,63 @@
+@header {
+    path:       packages/use-cases/downlink.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package use_cases.downlink;
+
+import deal.std.units.{deg, s};
+
+/**
+ * Downlink stored imagery to a ground station during an X-band pass.
+ */
+use case def DownlinkPass {
+    @flow:<<flows to>> establishLink {
+        from: acquireGroundStation;
+    }
+    @flow:<<flows to>> transmitProducts {
+        from: establishLink;
+    }
+    @flow:<<flows to>> confirmReceipt {
+        from: transmitProducts;
+    }
+    public (
+        actor groundStation : GroundSegment [1];
+        subject sat : Halcyon [1];
+        attribute minElevation : Angle [1] = deg(10);
+        attribute passDuration : Duration [1] = s(420);
+    )
+    precondition aboveHorizon {
+        sat.comms.mass >= 0
+    }
+    postcondition queueDrained {
+        sat.cdh.memory.capacity_GB >= 0
+    }
+    action acquireGroundStation;
+    action establishLink;
+    action transmitProducts;
+    action confirmReceipt;
+}
+
+/**
+ * Store-and-forward: collect over remote targets, hold, downlink on the
+ * next station pass.
+ */
+use case def StoreAndForward {
+    @flow:<<flows to>> holdInMemory {
+        from: collectRemote;
+    }
+    @flow:<<flows to>> downlinkOnPass {
+        from: holdInMemory;
+    }
+    public (
+        actor groundStation : GroundSegment [1];
+        subject sat : Halcyon [1];
+    )
+    action collectRemote;
+    action holdInMemory;
+    action downlinkOnPass;
+}

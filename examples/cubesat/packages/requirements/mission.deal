@@ -1,0 +1,79 @@
+@header {
+    path:       packages/requirements/mission.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package requirements.mission;
+
+import deal.std.units.{km, deg, hr};
+
+/**
+ * Mission-level requirement deriving from stakeholder needs.
+ *
+ * The `@trace:` annotation records the upstream need; it lowers M2 to a
+ * KerML Dependency whose client/supplier ends are synthesized from the
+ * annotation (8.3.2.2.2), the same target as the explicit `allocate`
+ * blocks in traceability.dealx — annotation here, first-class
+ * relationship there, so the showcase exercises both routes to Dependency.
+ */
+requirement def REQ_MIS_001 {
+    @trace:<<derives from>> NEED_IMAGERY
+    public (
+        attribute text : String [1] = "The system shall image designated land targets between 60S and 60N latitude.";
+        attribute coverageLatitude : Angle [1] = deg(60);
+        attribute orbitAltitude : Length [1] = km(550);
+    )
+    verification {
+        accepts: [analysis, simulation];
+        threshold: coverageLatitude;
+        operator: "<=";
+    }
+}
+
+/** Sun-synchronous orbit for consistent illumination. */
+requirement def REQ_MIS_002 {
+    @trace:<<derives from>> NEED_IMAGERY
+    public (
+        attribute text : String [1] = "The system shall fly a sun-synchronous orbit with a 10:30 local-time-of-descending-node.";
+        attribute ltdn_hr : Real [1] = 10.5;
+        attribute inclination : Angle [1] = deg(97.6);
+    )
+    verification {
+        accepts: [analysis];
+        threshold: inclination;
+        operator: "==";
+    }
+}
+
+/** Revisit interval bound. */
+requirement def REQ_MIS_003 {
+    @trace:<<derives from>> NEED_REVISIT
+    public (
+        attribute text : String [1] = "The system shall revisit any designated target at least once every 5 days.";
+        attribute maxRevisit : Duration [1] = hr(120);
+    )
+    verification {
+        accepts: [analysis, simulation];
+        threshold: maxRevisit;
+        operator: "<=";
+    }
+}
+
+/** Mission lifetime. */
+requirement def REQ_MIS_004 {
+    @trace:<<derives from>> NEED_LIFETIME
+    @assumes: "ISO 27852 LEO debris environment; 25-yr deorbit compliant"
+    public (
+        attribute text : String [1] = "The spacecraft shall meet all performance requirements for a 3-year mission life.";
+        attribute missionLife : Duration [1] = hr(26280);
+    )
+    verification {
+        accepts: [analysis, test];
+        threshold: missionLife;
+        operator: ">=";
+    }
+}

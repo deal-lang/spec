@@ -1,0 +1,59 @@
+@header {
+    path:       packages/use-cases/safemode.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package use_cases.safemode;
+
+import deal.std.units.{deg};
+
+/**
+ * Autonomous safe-mode entry on fault detection. The operational twin of
+ * the Safe state in the frontier mission-mode machine (packages/behaviors
+ * /modes.deal); this use case stays within today's grammar.
+ */
+use case def SafeModeEntry {
+    @flow:<<flows to>> sheddLoads {
+        from: detectFault;
+    }
+    @flow:<<flows to>> sunPoint {
+        from: sheddLoads;
+    }
+    @flow:<<flows to>> beaconHome {
+        from: sunPoint;
+    }
+    public (
+        actor onboardFDIR : FaultMonitor [1];
+        subject sat : Halcyon [1];
+        attribute sunPointTolerance : Angle [1] = deg(10);
+    )
+    precondition faultLatched {
+        sat.obc.watchdogTimeout_s >= 0
+    }
+    postcondition powerPositive {
+        sat.eps.battery.stateOfCharge >= 0.2
+    }
+    action detectFault;
+    action sheddLoads;
+    action sunPoint;
+    action beaconHome;
+}
+
+/**
+ * Ground-commanded recovery from safe mode back to nominal.
+ */
+use case def SafeModeRecovery {
+    @flow:<<flows to>> restoreNominal {
+        from: clearFault;
+    }
+    public (
+        actor groundController : Operator [1];
+        subject sat : Halcyon [1];
+    )
+    action clearFault;
+    action restoreNominal;
+}

@@ -1,0 +1,78 @@
+@header {
+    path:       packages/use-cases/imaging.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package use_cases.imaging;
+
+import deal.std.units.{km, deg, s};
+
+/**
+ * Collect imagery of a designated target during a daylight pass.
+ *
+ * KerML mapping: `use case def` is SysML-level (UseCaseDefinition); the
+ * KerML graph sees a Behavior-bearing Structure. The `actor`/`subject`
+ * usages lower M1 to Features (ActorUsage/SubjectUsage → Feature,
+ * 8.3.3.3.4) — the load-bearing Feature mapping. The `@flow:<<flows to>>`
+ * annotations sequence the actions; they target the Interaction/Flow
+ * crossing (8.3.4.9.x) and are the structural twin of the frontier
+ * activity in packages/behaviors. `precondition`/`postcondition` bodies
+ * are BooleanExpressions lowered M3 (8.3.4.7.2). Subject/actor type names
+ * (Halcyon, GroundSegment) resolve once the system composition lands in
+ * Phase 5; undefined type names on actor/subject are tolerated by check.
+ */
+use case def ImagingPass {
+    @flow:<<flows to>> slewToTarget {
+        from: acquireState;
+    }
+    @flow:<<flows to>> captureScene {
+        from: slewToTarget;
+    }
+    @flow:<<flows to>> storeProduct {
+        from: captureScene;
+    }
+    @flow:<<flows to>> resumeNadir {
+        from: storeProduct;
+    }
+    public (
+        actor missionPlanner : Operator [1];
+        subject sat : Halcyon [1];
+        attribute targetLatitude : Angle [1] = deg(38);
+        attribute sunElevationMin : Angle [1] = deg(20);
+        attribute collectDuration : Duration [1] = s(45);
+    )
+    precondition daylightAndPowered {
+        sat.eps.battery.stateOfCharge >= 0.5
+    }
+    postcondition productStored {
+        sat.cdh.memory.capacity_GB >= 1
+    }
+    action acquireState;
+    action slewToTarget;
+    action captureScene;
+    action storeProduct;
+    action resumeNadir;
+}
+
+/**
+ * Multi-target tasking within one pass (slew between adjacent targets).
+ */
+use case def TargetCollection {
+    @flow:<<flows to>> collectNext {
+        from: planSequence;
+    }
+    public (
+        actor missionPlanner : Operator [1];
+        subject sat : Halcyon [1];
+        attribute targetsPerPass : Integer [1] = 3;
+    )
+    precondition momentumAvailable {
+        sat.adcs.pointingAccuracy <= 0.1
+    }
+    action planSequence;
+    action collectNext;
+}

@@ -1,0 +1,129 @@
+@header {
+    path:       packages/requirements/system.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package requirements.system;
+
+import deal.std.units.{kg, km, m, W, Wh, deg, hr, degC, percent};
+
+/**
+ * System requirement with a measurable verification contract.
+ *
+ * KerML mapping: the `verification {}` block is a DEAL requirement
+ * contract (SD-20) — it parses and checks today but is carried, not
+ * emitted (no direct KerML atom). The `threshold`/`operator` pair names
+ * the attribute and comparison the satisfy evidence is checked against in
+ * Phase 6; `accepts`/`rejects` enumerate which of the four verification
+ * methods are admissible. All four methods (simulation/test/analysis/
+ * inspection) appear across REQ_SYS_001..006.
+ *
+ * @see NEED_IMAGERY — ground sample distance driver
+ */
+requirement def REQ_SYS_001 {
+    @trace:<<derives from>> REQ_MIS_001
+    public (
+        attribute text : String [1] = "The imager shall achieve a ground sample distance of 22 m or better from the operational orbit.";
+        attribute maxGSD : Length [1] = m(22);
+        attribute testCondition : String [1] = "nadir-pointed, nominal altitude";
+    )
+    verification {
+        accepts: [analysis, test];
+        rejects: [inspection];
+        threshold: maxGSD;
+        operator: "<=";
+    }
+}
+
+/** Pointing accuracy bounds image smear and geolocation error. */
+requirement def REQ_SYS_002 {
+    @trace:<<derives from>> REQ_MIS_001
+    @concerns: "Couples to reaction-wheel jitter; verified by pointing_jitter sim"
+    public (
+        attribute text : String [1] = "The ADCS shall hold nadir pointing to within 0.1 degrees (3-sigma) during imaging.";
+        attribute pointingError : Angle [1] = deg(0.1);
+    )
+    verification {
+        accepts: [simulation, test];
+        rejects: [inspection];
+        threshold: pointingError;
+        operator: "<=";
+    }
+}
+
+/** Power-positive across the worst-case orbit. */
+requirement def REQ_SYS_003 {
+    @trace:<<derives from>> REQ_MIS_004
+    public (
+        attribute text : String [1] = "The EPS shall maintain a non-negative orbit-average energy balance in the worst-case eclipse season.";
+        attribute minEnergyMargin : Energy [1] = Wh(0);
+    )
+    verification {
+        accepts: [simulation, analysis];
+        threshold: minEnergyMargin;
+        operator: ">=";
+    }
+}
+
+/** Battery depth-of-discharge ceiling protects cycle life. */
+requirement def REQ_SYS_004 {
+    @trace:<<derives from>> REQ_MIS_004
+    @assumes: "25k cycles at 20% DoD yields >80% EOL capacity per cell datasheet"
+    public (
+        attribute text : String [1] = "The battery depth of discharge shall not exceed 30% in nominal operations.";
+        attribute maxDoD : Real [1] = 0.30;
+    )
+    verification {
+        accepts: [simulation, analysis];
+        threshold: maxDoD;
+        operator: "<=";
+    }
+}
+
+/** Daily downlink volume meets the data-delivery need. */
+requirement def REQ_SYS_005 {
+    @trace:<<derives from>> REQ_MIS_003
+    public (
+        attribute text : String [1] = "The X-band downlink shall deliver at least 2.0 Gbit of payload data per day to a single ground station.";
+        attribute minDailyVolume_Gbit : Real [1] = 2.0;
+    )
+    verification {
+        accepts: [simulation, test];
+        threshold: minDailyVolume_Gbit;
+        operator: ">=";
+    }
+}
+
+/** Battery temperature maintained within operating limits (range threshold). */
+requirement def REQ_SYS_006 {
+    @trace:<<derives from>> REQ_MIS_004
+    public (
+        attribute text : String [1] = "The thermal subsystem shall keep the battery between 0C and 45C during all operational modes.";
+        attribute minTemp : Temperature [1] = degC(0);
+        attribute maxTemp : Temperature [1] = degC(45);
+    )
+    verification {
+        accepts: [simulation, test];
+        threshold: [minTemp, maxTemp];
+        operator: [">=", "<="];
+    }
+}
+
+/** 6U dispenser interface conformance — inspection-verified. */
+requirement def REQ_SYS_007 {
+    @trace:<<derives from>> NEED_LAUNCH_COMPAT
+    public (
+        attribute text : String [1] = "The flight system shall conform to the 6U dispenser mechanical envelope and not exceed 12 kg.";
+        attribute maxMass : Mass [1] = kg(12);
+    )
+    verification {
+        accepts: [inspection, test];
+        rejects: [simulation];
+        threshold: maxMass;
+        operator: "<=";
+    }
+}
