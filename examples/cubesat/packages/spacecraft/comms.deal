@@ -1,0 +1,102 @@
+@header {
+    path:       packages/spacecraft/comms.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.comms;
+
+import deal.std.units.{kg, W, V};
+import interfaces.rf.{UHFPort, XBandPort};
+import interfaces.power.{Rail12V};
+import interfaces.data.{CANPort, SpaceWirePort};
+
+/** Abstract antenna base — gain carried in dBi as Real (no log units yet). */
+abstract part def Antenna {
+    public (
+        attribute gain_dBi : Real [1];
+        attribute mass : Mass [1];
+    )
+}
+
+/** Deployable UHF tape monopole. */
+part def AntennaUHF <<specializes>> Antenna {
+    public (
+        attribute polarization : String [1] = "linear";
+        port feed : UHFPort [1];
+    )
+}
+
+/** Body-mounted X-band patch array. */
+part def AntennaXBand <<specializes>> Antenna {
+    public (
+        attribute polarization : String [1] = "RHCP";
+        port feed : XBandPort [1];
+    )
+}
+
+/**
+ * UHF TT&C transceiver — always-on command path and beacon.
+ *
+ * Visibility exemplar: the three wrappers below lower M5 to the
+ * VisibilityKind enum on each synthesized membership (8.3.2.4.7) —
+ * grammar and sema enforce them today, the emitter does not yet
+ * serialize visibility. The viewer renders them as the +/#/− member
+ * prefixes (RG-9.2).
+ */
+part def UHFTransceiver {
+    @confidence: 0.95
+    public (
+        port rfPort : UHFPort [1];
+        port telemetry : CANPort [1];
+        attribute rxPower : Power [1] = W(0.25);
+    )
+    protected (
+        attribute txCurrentPeak_A : Real [1] = 0.9;
+        attribute beaconInterval_s : Integer [1] = 30;
+    )
+    private (
+        attribute aesKeySlot : Integer [1] = 0;
+    )
+}
+
+/**
+ * X-band transmitter for payload downlink, 25 Msps OQPSK.
+ */
+part def XBandTransmitter {
+    @concerns: "8 W RF inrush vs PDU latching-limiter trip curve — bench test pending"
+    public (
+        port rfPort : XBandPort [1];
+        in port dataIn : SpaceWirePort [1];
+        in port powerIn : Rail12V [1];
+        attribute dcPower : Power [1] = W(30);
+        attribute mass : Mass [1] = kg(0.35);
+    )
+}
+
+/**
+ * Integrated comms suite — the `<<subsets>>` exemplar.
+ *
+ * KerML mapping: `<<subsets>>` on the usages below lowers M1 to
+ * Subsetting (8.3.3.3.10), emitted in the ownedRelationship set today:
+ * `uhfAntenna` and `xbandAntenna` each subset the general `antennas`
+ * feature, so the KerML graph knows both specific antennas draw from the
+ * same 2-element collection rather than adding members to it.
+ */
+part def CommsSuite {
+    public (
+        part antennas : Antenna [2];
+        part uhfAntenna : AntennaUHF [1] {
+            <<subsets>> antennas;
+        }
+        part xbandAntenna : AntennaXBand [1] {
+            <<subsets>> antennas;
+        }
+        part uhf : UHFTransceiver [1];
+        part xtx : XBandTransmitter [1];
+        attribute mass : Mass [1] = kg(0.9);
+    )
+}

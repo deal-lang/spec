@@ -1,0 +1,133 @@
+@header {
+    path:       packages/spacecraft/adcs.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.adcs;
+
+import deal.std.units.{kg, W, mm, Hz, rpm, deg};
+import interfaces.power.{Rail5V};
+import interfaces.data.{CANPort};
+
+/**
+ * Abstract base for momentum-exchange and field-interaction actuators.
+ */
+abstract part def AttitudeActuator {
+    public (
+        attribute mass : Mass [1];
+        attribute peakPower : Power [1];
+        port commandPort : CANPort [1];
+    )
+}
+
+/**
+ * Reaction wheel, 15 mNms class.
+ *
+ * KerML mapping: the `<<specializes>>` chain (ReactionWheel →
+ * AttitudeActuator) lowers M1 to Subclassification (8.3.3.2.3) and is in
+ * the emitted ownedRelationship set today; inherited features
+ * (mass, peakPower, commandPort) arrive via the KerML inheritance
+ * semantics rather than re-declaration, which is why only the deltas
+ * appear below.
+ */
+part def ReactionWheel <<specializes>> AttitudeActuator {
+    @confidence: 0.92
+    @rationale: "15 mNms sized from worst-case slew + momentum buildup per rev"
+    @simulation:<<computes>> wheelJitter {
+        equation: "Static/dynamic imbalance harmonics vs wheel speed PSD";
+        tool: "matlab";
+        entry: "simulations/adcs/pointing_jitter.m";
+        fidelity: "analytical";
+    }
+    public (
+        attribute momentumStorage : Real [1] = 0.015;
+        attribute maxTorque : Real [1] = 0.004;
+        attribute maxSpeed : AngularVelocity [1] = rpm(6000);
+        attribute staticImbalance : Real [1];
+    )
+}
+
+/**
+ * Magnetorquer rod for detumble and wheel desaturation. Dipole moment in
+ * A·m² carried as Real — no composite magnetic-moment unit in
+ * deal-std/0.1 (candidate addition alongside dB).
+ */
+part def Magnetorquer <<specializes>> AttitudeActuator {
+    @simulation:<<computes>> detumblePerformance {
+        equation: "B-dot control vs IGRF dipole field over orbit";
+        tool: "matlab";
+        entry: "simulations/adcs/detumble_bdot.m";
+        fidelity: "analytical";
+    }
+    public (
+        attribute dipoleMoment_Am2 : Real [1] = 0.2;
+        attribute residualMoment_Am2 : Real [1] = 0.001;
+    )
+}
+
+/** Star tracker, cross-boresight accuracy class 8 arcsec. */
+part def StarTracker {
+    public (
+        attribute accuracyCrossBoresight_arcsec : Real [1] = 8.0;
+        attribute accuracyRoll_arcsec : Real [1] = 40.0;
+        attribute updateRate : Frequency [1] = Hz(5);
+        attribute mass : Mass [1] = kg(0.25);
+        port dataPort : CANPort [1];
+    )
+}
+
+/** MEMS IMU for rate propagation between tracker updates. */
+part def IMU {
+    public (
+        attribute gyroBiasStability_deg_hr : Real [1] = 1.0;
+        attribute sampleRate : Frequency [1] = Hz(200);
+        port dataPort : CANPort [1];
+    )
+}
+
+/** Coarse sun sensor (photodiode pyramid face). */
+part def SunSensor {
+    public (
+        attribute fieldOfView : Angle [1] = deg(120);
+        attribute accuracy : Angle [1] = deg(3);
+    )
+}
+
+/** GNSS receiver for orbit knowledge and time. */
+part def GPSReceiver {
+    public (
+        attribute positionAccuracy_m : Real [1] = 8.0;
+        attribute timeAccuracy_us : Real [1] = 1.0;
+        port dataPort : CANPort [1];
+    )
+}
+
+/**
+ * Integrated ADCS suite — the multiplicity-range exemplar.
+ *
+ * KerML mapping: every bracketed multiplicity below lowers M1 to a
+ * Multiplicity owning a MultiplicityRange (8.3.4.11.2; always via the
+ * range form per SD-14): exact `[3]`, range `[4..6]`, optional `[0..1]`,
+ * and unbounded `[1..*]` whose upper bound lowers to LiteralInfinity
+ * (M3, 8.3.4.8.11). All parse and dimension-check today; the emitter
+ * does not yet serialize MultiplicityRange objects.
+ */
+part def ADCSSuite {
+    @assumes: "Three-axis control; pyramid of coarse sun sensors for safe mode"
+    public (
+        part wheels : ReactionWheel [3];
+        part torquers : Magnetorquer [3];
+        part tracker : StarTracker [0..1];
+        part imu : IMU [1];
+        part sunSensors : SunSensor [4..6];
+        part gps : GPSReceiver [1];
+        attribute calibrationLog : String [1..*];
+        in port suiteRail : Rail5V [1];
+        attribute mass : Mass [1] = kg(1.4);
+        attribute pointingAccuracy : Angle [1] = deg(0.1);
+    )
+}

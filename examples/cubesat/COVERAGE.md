@@ -14,19 +14,19 @@ exists in the named file AND (core) passes `deal check`.
 
 | ✓ | Construct | Planned exemplar | KerML target (mech · status) |
 |---|---|---|---|
-| ☐ | `package` + nested package | `spacecraft/index.deal` | Package (M1 · impl) |
+| ☑ | `package` + nested package | `spacecraft/index.deal`; nesting in `interfaces/*.deal` | Package (M1 · impl) |
 | ☐ | `import` — all 5 forms incl. `~` alias, `.*` | `spacecraft/eps.deal` | MembershipImport / NamespaceImport (M1 · designed; D-24 single-package emit) |
-| ☐ | `export` lists | `spacecraft/index.deal` | re-export membership (M2) |
+| ☑ | `export` lists | `interfaces/index.deal` | re-export membership (M2) |
 | ☐ | `part def` | `spacecraft/eps.deal` (BatteryPack) | Structure / PartDefinition (M1 · impl) |
 | ☐ | part usage `part x : T [n]` | `spacecraft/eps.deal` | Feature / PartUsage (M1 · impl); FeatureTyping synthesized (M2) |
 | ☐ | `ordered` / `nonunique` | `spacecraft/eps.deal` (cell strings) | isOrdered impl · isUnique designed |
 | ☐ | multiplicity `[n]` `[n..m]` `[n..*]` `[*]` | `spacecraft/adcs.deal` | MultiplicityRange (M1 · designed, not emitted); LiteralInfinity (M3) |
-| ☐ | `port def` + port usage | `interfaces/power.deal` | PortDefinition / PortUsage (M1 · impl) |
-| ☐ | port-body `<<redefines>>` | `interfaces/power.deal` (switched rail) | Redefinition (M1 · impl) |
-| ☐ | `in/out/inout` directions | `interfaces/data.deal` | FeatureDirectionKind (M5 · impl on usages); conjugation derived at export (M2) |
-| ☐ | `interface def` | `interfaces/data.deal` (SpaceWire) | InterfaceDefinition (M1 · impl, SysML-level) |
-| ☐ | `attribute def` | `interfaces/power.deal` (PowerTelemetry) | DataType (M1 · impl — emitter quirk: emits AttributeUsage) |
-| ☐ | attribute usage + default `= expr` | `spacecraft/eps.deal` | AttributeUsage (M1 · impl); FeatureValue default (M1 · designed) |
+| ☑ | `port def` + port usage | `interfaces/power.deal` | PortDefinition / PortUsage (M1 · impl) |
+| ☑ | port-body `<<redefines>>` (def body) | `interfaces/power.deal` (Rail3V3) | Redefinition (M1 · impl) |
+| ☑ | `in/out/inout` directions | `interfaces/data.deal` (CANBus) | FeatureDirectionKind (M5 · impl on usages); conjugation derived at export (M2) |
+| ☑ | `interface def` | `interfaces/data.deal` (CANBus) | InterfaceDefinition (M1 · impl, SysML-level) |
+| ☑ | `attribute def` | `interfaces/power.deal` (PowerTelemetry) | DataType (M1 · impl — emitter quirk: emits AttributeUsage) |
+| ☑ | attribute usage + default `= expr` | `interfaces/power.deal` | AttributeUsage (M1 · impl); FeatureValue default (M1 · designed) |
 | ☐ | `derived attribute` | `spacecraft/eps.deal` | Feature isDerived=true (M1 · impl) |
 | ☐ | `item def` | `spacecraft/payload.deal` (ImageProduct) | Class / ItemDefinition (M1 · impl) |
 | ☐ | `flow def` + `@flow:` | `interfaces/data.deal` | Flow/Interaction (M1 · partial — emitter lumps to ItemDefinition) |
@@ -37,7 +37,7 @@ exists in the named file AND (core) passes `deal check`.
 | ☐ | `calc def` + params | `analysis/calcs.deal` (OrbitAvgPower) | **Function** (M1 · impl; ParameterMembership M2, ordered per D-12) |
 | ☐ | return contract `=> ±` / `=> sig N` / predicate ref | `analysis/calcs.deal` | no KerML equiv — carried as metadata on Function (D-08 "carried not enforced") |
 | ☐ | `constraint def` + `require` | `analysis/constraints.deal` (SafeDoD) | **Predicate** (M1 · impl); require → Invariant (designed) |
-| ☐ | `<<specializes>>` / `:>` | `spacecraft/adcs.deal` | Subclassification (M1 · impl) |
+| ☑ | `<<specializes>>` / `:>` | `interfaces/power.deal` (Rail3V3) | Subclassification (M1 · impl) |
 | ☐ | `<<subsets>>` | `spacecraft/comms.deal` | Subsetting (M1 · impl) |
 | ☐ | `<<redefines>>` / `:>>` | `interfaces/power.deal` | Redefinition (M1 · impl) |
 | ☐ | `<<references>>` / `::>` / `ref` | `spacecraft/obc.deal` | ReferenceSubsetting (M1 · **designed — not in emitted edge set**) |

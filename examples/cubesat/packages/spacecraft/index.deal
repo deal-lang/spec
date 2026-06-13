@@ -23,11 +23,10 @@
  */
 package spacecraft;
 
-// Phase 2 exports — uncomment as files land:
-// export structure.{BusFrame, DeploymentSwitch, SeparationSpring};
-// export eps.{SolarArray, BatteryPack, PowerDistributionUnit};
-// export adcs.{ReactionWheel, Magnetorquer, StarTracker, IMU, SunSensor, GPSReceiver};
-// export comms.{UHFTransceiver, XBandTransmitter, AntennaUHF, AntennaXBand};
-// export obc.{OnboardComputer, MassMemory};
-// export payload.{MultispectralImager, PayloadDataHandler};
-// export thermal.{HeaterCircuit, RadiatorPanel, ThermistorNet};
+export structure.{Deployable, BusFrame6U, DeploymentSwitch};
+export eps.{BatteryCell18650, BatteryString, BatteryPack, SolarArray, PowerDistributionUnit};
+export adcs.{AttitudeActuator, ReactionWheel, Magnetorquer, StarTracker, IMU, SunSensor, GPSReceiver, ADCSSuite};
+export comms.{Antenna, AntennaUHF, AntennaXBand, UHFTransceiver, XBandTransmitter, CommsSuite};
+export obc.{MassMemory, OnboardComputer, CDHSuite};
+export payload.{ImageProduct, MultispectralImager, PayloadDataHandler};
+export thermal.{HeaterCircuit, RadiatorPanel, ThermistorNet};

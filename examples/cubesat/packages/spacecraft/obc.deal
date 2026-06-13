@@ -1,0 +1,66 @@
+@header {
+    path:       packages/spacecraft/obc.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.obc;
+
+import deal.std.units.{kg, W, MHz};
+import interfaces.power.{Rail3V3};
+import interfaces.data.{CANPort, SpaceWirePort};
+
+/**
+ * NAND flash mass memory for image products and telemetry archive.
+ */
+part def MassMemory {
+    public (
+        attribute capacity_GB : Integer [1] = 64;
+        attribute eccScheme : String [1] = "BCH-8";
+        in port writePort : SpaceWirePort [1];
+        out port readPort : SpaceWirePort [1];
+    )
+}
+
+/**
+ * Command & data handling computer — the `ref` / non-composite reference
+ * exemplar.
+ *
+ * KerML mapping: `ref part archive : MassMemory` is a Feature with
+ * isComposite=false — the part is *used* here but *owned* by the C&DH
+ * suite below, so deleting the OBC must not delete the memory. This is
+ * ReferenceSubsetting territory (8.3.3.3.9): designed and parsed today,
+ * but NOT in the emitter's relationship set yet (specializes/redefines/
+ * subsets only) — the one deliberately "designed-not-impl" edge this
+ * showcase carries to keep the gap visible.
+ */
+part def OnboardComputer {
+    @confidence: 0.9
+    @rationale: "LEON3-class rad-tolerant SoC; heritage flight software stack"
+    @assumes: "External watchdog resets to safe mode on 3 missed strobes"
+    public (
+        attribute clockSpeed : Frequency [1] = MHz(100);
+        attribute ramECC : Boolean [1] = true;
+        attribute mass : Mass [1] = kg(0.13);
+        ref part archive : MassMemory [1];
+        in port rail : Rail3V3 [1];
+        inout port canBus : CANPort [1];
+    )
+    protected (
+        attribute watchdogTimeout_s : Real [1] = 60.0;
+    )
+}
+
+/**
+ * C&DH suite — owns the mass memory the OBC references.
+ */
+part def CDHSuite {
+    public (
+        part computer : OnboardComputer [1];
+        part memory : MassMemory [1];
+        attribute idlePower : Power [1] = W(1.2);
+    )
+}

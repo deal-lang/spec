@@ -1,0 +1,55 @@
+@header {
+    path:       packages/spacecraft/thermal.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.thermal;
+
+import deal.std.units.{kg, W, m2, degC};
+import interfaces.thermal.{HeaterCircuitPort, ConductiveStrapPort};
+import interfaces.power.{Rail12V};
+
+/**
+ * Survival heater circuit (battery + imager focal plane).
+ */
+part def HeaterCircuit {
+    @simulation:<<computes>> thermalBalance {
+        equation: "6-node lumped network; solar/albedo/IR loads, eclipse transients";
+        tool: "python";
+        entry: "simulations/thermal/spacecraft_thermal.py";
+        fidelity: "analytical";
+    }
+    public (
+        port circuit : HeaterCircuitPort [1];
+        in port powerIn : Rail12V [1];
+        attribute zones : Integer [1] = 2;
+    )
+}
+
+/**
+ * Body-mounted radiator panel, -Z face (anti-sun in nominal attitude).
+ */
+part def RadiatorPanel {
+    @assumes: "AZ93 white paint: alpha 0.15 BOL / 0.21 EOL, epsilon 0.91"
+    public (
+        attribute area : Area [1] = m2(0.02);
+        attribute emissivity : Real [1] = 0.91;
+        attribute absorptivityEOL : Real [1] = 0.21;
+        in port strapIn : ConductiveStrapPort [4];
+        attribute mass : Mass [1] = kg(0.3);
+    )
+}
+
+/**
+ * Distributed thermistor network read by the OBC housekeeping loop.
+ */
+part def ThermistorNet {
+    public (
+        attribute channelCount : Integer [1] = 12;
+        attribute accuracy : Temperature [1] = degC(0.5);
+    )
+}

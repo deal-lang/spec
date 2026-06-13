@@ -1,0 +1,70 @@
+@header {
+    path:       packages/spacecraft/payload.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.payload;
+
+import deal.std.units.{kg, W, mm, degC};
+import interfaces.power.{Rail12V};
+import interfaces.data.{SpaceWirePort};
+import interfaces.thermal.{ThermallyManaged};
+
+/**
+ * A captured multispectral image tile — the `item def` exemplar.
+ *
+ * KerML mapping: `item def` lowers M1 to KerML Class (8.3.4.2.2), the
+ * identity-bearing, non-composite leg of the attribute/item/part
+ * trichotomy — an ImageProduct is a *thing that persists and moves*
+ * (imager → memory → ground) without being a structural part of the
+ * vehicle. Emitted as SysML ItemDefinition today. Flow payloads in the
+ * data IBD carry this type.
+ */
+item def ImageProduct {
+    public (
+        attribute sceneId : String [1];
+        attribute captureTime : String [1];
+        attribute bandCount : Integer [1];
+        attribute sizeBytes : Integer [1];
+        attribute cloudCoverEstimate : Real [1];
+    )
+}
+
+/**
+ * Pushbroom multispectral imager, 4-band VNIR.
+ */
+part def MultispectralImager <<specializes>> ThermallyManaged {
+    @confidence: 0.85
+    @rationale: "Pushbroom over framing: GSD stability vs platform jitter budget"
+    @concerns: "Smear sensitivity couples to wheel jitter — see pointing_jitter sim"
+    @assumes: "Focal plane held within ±2 degC of calibration soak during imaging"
+    public (
+        attribute focalLength : Length [1] = mm(580);
+        attribute pixelPitch_um : Real [1] = 5.5;
+        attribute bands : Integer [1] = 4;
+        attribute bandCenters_nm : Real [4..8];
+        attribute imagingPower : Power [1] = W(12);
+        attribute mass : Mass [1] = kg(1.8);
+        out port imageOut : SpaceWirePort [1];
+        in port powerIn : Rail12V [1];
+    )
+}
+
+/**
+ * Payload data handler — compression and storage routing between the
+ * imager and mass memory.
+ */
+part def PayloadDataHandler {
+    public (
+        attribute compressionStandard : String [1] = "CCSDS 122.0-B-2";
+        attribute throughput_Mbps : Real [1] = 800.0;
+        in port fromImager : SpaceWirePort [1];
+        out port toMemory : SpaceWirePort [1];
+        in port powerIn : Rail12V [1];
+        attribute processingPower : Power [1] = W(6);
+    )
+}

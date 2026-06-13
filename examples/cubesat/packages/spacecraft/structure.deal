@@ -1,0 +1,54 @@
+@header {
+    path:       packages/spacecraft/structure.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.structure;
+
+import deal.std.units.{kg, mm, N};
+
+/**
+ * Anything with a stowed/deployed state transition fired at separation:
+ * solar array wings, UHF tape antenna. Declared `abstract` so it can only
+ * be used through its specializations — the viewer renders this as the
+ * "abstract" semantic badge slot (RG-9.3).
+ *
+ * KerML mapping: `abstract` lowers M1 to the isAbstract flag on the
+ * emitted Type (KerML 8.3.3.1.10 Type attribute) — modifier-to-flag, the
+ * same M1 pattern as ordered → isOrdered.
+ */
+abstract part def Deployable {
+    public (
+        attribute deployed : Boolean [1] = false;
+        attribute deploymentEnergy : Real [1];
+        attribute holdDownPoints : Integer [1];
+    )
+}
+
+/**
+ * 6U primary structure per the CubeSat Design Specification rev 14.1.
+ */
+part def BusFrame6U {
+    @assumes: "Rails hard-anodized per CDS 14.1 §4.2.3; canisterized dispenser"
+    public (
+        attribute mass : Mass [1] = kg(1.1);
+        attribute railLength : Length [1] = mm(366);
+        attribute envelopeWidth : Length [1] = mm(226.3);
+        attribute envelopeDepth : Length [1] = mm(100);
+    )
+}
+
+/**
+ * Rail-mounted deployment switch — inhibits all power until dispenser
+ * separation (launch-provider inhibit chain, 3 in series).
+ */
+part def DeploymentSwitch {
+    public (
+        attribute actuated : Boolean [1] = false;
+        attribute actuationForce : Force [1] = N(1.5);
+    )
+}

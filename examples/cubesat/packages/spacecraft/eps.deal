@@ -1,0 +1,152 @@
+@header {
+    path:       packages/spacecraft/eps.deal
+    schema:     deal/0.1
+    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.eps;
+
+/*
+ * Import exemplar — the surface forms PS-4 defines, all used below:
+ * selective `.{list}`, whole-module, `as` rename, and glob `.*`. Each
+ * selective import normalizes to a KerML MembershipImport (8.3.2.4.4),
+ * the glob to a NamespaceImport (8.3.2.4.6); the current emitter folds
+ * the workspace into one Package (D-24) so Import elements are not yet
+ * emitted as such.
+ */
+import deal.std.units.{kg, W, V, A, Wh, degC, ohm, percent, m2};
+import interfaces.power.{UnregulatedBusPort, ArrayInputPort, SwitchedRailPort, Rail3V3, Rail5V, Rail12V, UmbilicalPort, PowerTelemetry};
+import interfaces.data.{CANPort};
+import interfaces.thermal.*;
+import spacecraft.structure as structure;
+
+/**
+ * 18650 Li-ion cell, qualified screening lot.
+ */
+part def BatteryCell18650 {
+    @confidence: 0.95
+    @rationale: "COTS 18650 with lot screening per NASA EEE-INST-002 derating"
+    public (
+        attribute nominalVoltage : Voltage [1] = V(3.7);
+        attribute capacity : Energy [1] = Wh(12.6);
+        attribute mass : Mass [1] = kg(0.047);
+    )
+    protected (
+        attribute internalResistance : Resistance [1] = ohm(0.035);
+    )
+}
+
+/**
+ * 4s2p battery string — the ordered-cells exemplar.
+ *
+ * KerML mapping: `ordered part cells : BatteryCell18650 [8]` is a Feature
+ * with isOrdered=true (M1 modifier-to-flag, 8.3.3.3.4) and a
+ * MultiplicityRange of 8 (8.3.4.11.2 — parses and checks today, not yet
+ * emitted). The dotted reads in the derived attributes below
+ * (`cells.nominalVoltage`) synthesize one FeatureChaining relationship
+ * per segment at normalization (M2, 8.3.3.3.5, CS-15) — DEAL never
+ * authors a `chains` keyword.
+ */
+part def BatteryString {
+    public (
+        ordered part cells : BatteryCell18650 [8];
+        attribute seriesCount : Integer [1] = 4;
+        attribute parallelCount : Integer [1] = 2;
+        derived attribute stringVoltage : Voltage = cells.nominalVoltage * seriesCount;
+        derived attribute stringCapacity : Energy = cells.capacity * parallelCount;
+    )
+}
+
+/**
+ * HALCYON battery pack: 2 strings, 4s4p total, 201 Wh nameplate.
+ * Deliberately the densest element in the model — five compartments
+ * (three visibility groups + ports + nested parts) to stress the
+ * ElementBox anatomy (RG-9.2) and all three badge slots.
+ *
+ * KerML mapping: `part def` is the canonical M1 mapping — KerML
+ * Structure (8.3.4.3.2), surfaced in SysML as PartDefinition; emitted
+ * today. Every nested member becomes a Feature carried by a synthesized
+ * FeatureMembership (M2, 8.3.3.1.6) — the reification DEAL authors as
+ * plain nesting. Doc comments like this one target KerML Documentation
+ * (8.3.2.3.5); lowering is deferred while the IR stays comment-free
+ * (D-25). The structured @see tags below resolve against requirement IDs
+ * landing in Phase 3.
+ *
+ * @see REQ_SYS_003 — power-positive orbit requirement
+ * @see REQ_SYS_004 — depth-of-discharge ceiling
+ */
+part def BatteryPack <<specializes>> ThermallyManaged {
+    @confidence: 0.88
+    @rationale: "2-string redundancy: single-string failure keeps safe-mode power"
+    @assumes: "EOL capacity fade 80% after 25k LEO cycles at 20% DoD"
+    @concerns: "Heater duty cycle in beta-0 eclipse season unvalidated until TVAC"
+    @simulation:<<computes>> energyBalance {
+        equation: "SoC(t) integrated over orbit; charge/discharge efficiency asymmetry";
+        tool: "python";
+        entry: "simulations/power/eps_energy_balance.py";
+        fidelity: "analytical";
+    }
+    public (
+        ordered part strings : BatteryString [2];
+        out port packBus : UnregulatedBusPort [1] {
+            <<redefines>> maxCurrent = A(10);
+        }
+        attribute nameplateCapacity : Energy [1] = Wh(201);
+        attribute usableCapacity : Energy [1] = Wh(161);
+        attribute packMass : Mass [1] = kg(1.9);
+        attribute stateOfCharge : Real [1];
+        derived attribute remainingEnergy : Energy = usableCapacity * stateOfCharge;
+    )
+    protected (
+        <<redefines>> minOperatingTemp = degC(0);
+        <<redefines>> maxOperatingTemp = degC(45);
+        <<redefines>> minSurvivalTemp = degC(-10);
+        <<redefines>> maxSurvivalTemp = degC(60);
+        <<redefines>> thermalMass = packMass;
+        attribute packResistance : Resistance [1] = ohm(0.07);
+    )
+    private (
+        attribute balanceThreshold : Voltage [1] = V(0.015);
+    )
+}
+
+/**
+ * Deployable solar array wing, 2 panels, 7 strings of triple-junction
+ * GaAs cells. Body-mounted string handled as a degenerate wing.
+ */
+part def SolarArray <<specializes>> structure.Deployable {
+    @confidence: 0.9
+    @assumes: "28.5% BOL cell efficiency; 2.5%/yr combined degradation"
+    public (
+        attribute panelArea : Area [1] = m2(0.06);
+        attribute bolPower : Power [1] = W(34);
+        attribute eolPower : Power [1] = W(29);
+        out port stringOut : ArrayInputPort [7];
+    )
+}
+
+/**
+ * Power distribution unit — MPPT front end plus latching current
+ * limiters. The five switched-rail ports below are the same-source
+ * bundling case for the power IBD view (RG-10.9: ≥3 same-kind connectors
+ * from one source merge into a shared trunk).
+ */
+part def PowerDistributionUnit {
+    @concerns: "LCL trip coordination with X-band TX inrush pending bench test"
+    public (
+        in port arrayIn : ArrayInputPort [3];
+        in port packIn : UnregulatedBusPort [1];
+        in port umbilical : UmbilicalPort [1];
+        out port obcRail : Rail3V3 [1];
+        out port adcsRail : Rail5V [1];
+        out port commsRail : Rail12V [1];
+        out port payloadRail : Rail12V [1];
+        out port heaterRail : Rail12V [1];
+        port telemetry : CANPort [1];
+        attribute mpptEfficiency : Real [1] = 0.96;
+        attribute telemetrySample : PowerTelemetry [1];
+    )
+}
