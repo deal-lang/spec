@@ -18,6 +18,5 @@
  */
 package analysis;
 
-// Phase 4 exports — uncomment as files land:
-// export calcs.{OrbitAvgPower, DepthOfDischarge, LinkMargin, MomentumStorage, GroundSampleDistance};
-// export constraints.{PositiveMargin, SafeDoD, WheelMomentumBound};
+export constraints.{PositiveMargin, SafeDoD, WheelMomentumBound};
+export calcs.{OrbitAvgPower, DepthOfDischarge, LinkMargin, MomentumStorage, GroundSampleDistance};

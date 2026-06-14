@@ -42,8 +42,8 @@ exists in the named file AND (core) passes `deal check`.
 | ☑ | `use case def` + actor/subject | `use-cases/imaging.deal` | UseCaseDefinition (M1 · impl-generic) |
 | ☑ | `actor def` (NEW construct) + `part def` subject | `use-cases/actors.deal`; subject `spacecraft/system.deal` (Halcyon) | PartDefinition + «actor» metadata (M1 · impl as PartDefinition; SD-18b). KerML has no ActorDefinition — actor is a part marked «actor». Grammar/parser/sema/emitter added this session; verified via Zig lib test. |
 | ☑ | `calc def` + params | `analysis/calcs.deal` (OrbitAvgPower) | **Function** (M1 · impl; ParameterMembership M2, ordered per D-12) |
-| ☐ | return contract `=> ±` / `=> sig N` / predicate ref | `analysis/calcs.deal` | no KerML equiv — carried as metadata on Function (D-08 "carried not enforced") |
-| ☐ | `constraint def` + `require` | `analysis/constraints.deal` (SafeDoD) | **Predicate** (M1 · impl); require → Invariant (designed) |
+| ☑ | return contract `=> ±` / `=> sig N` / predicate ref | `analysis/calcs.deal` (OrbitAvgPower ±, DoD sig+SafeDoD, LinkMargin sig+PositiveMargin) | no KerML equiv — carried as metadata on Function (D-08 "carried not enforced") |
+| ☑ | `constraint def` + `require` | `analysis/constraints.deal` (PositiveMargin/SafeDoD/WheelMomentumBound) | **Predicate** (M1 · impl); require → Invariant (designed) |
 | ☑ | `<<specializes>>` / `:>` | `interfaces/power.deal` (Rail3V3) | Subclassification (M1 · impl) |
 | ☑ | `<<subsets>>` | `spacecraft/comms.deal` | Subsetting (M1 · impl) |
 | ☑ | `<<redefines>>` / `:>>` | `interfaces/power.deal` | Redefinition (M1 · impl) |

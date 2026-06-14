@@ -1,0 +1,36 @@
+@header {
+    path:       packages/analysis/constraints.deal
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package analysis.constraints;
+
+/*
+ * Reusable predicates referenced from calc return contracts (SD-22/23) and
+ * available in any boolean context.
+ *
+ * KerML mapping: `constraint def` normalizes M1 to a KerML Predicate — a
+ * Boolean-valued Function (8.3.4.7.6); the `require` statement lowers to an
+ * Invariant (8.3.4.7.5) whose condition is a BooleanExpression (M3,
+ * 8.3.4.8.x). Parameters become ParameterMembership-owned Features (M2,
+ * 8.3.4.6.4). Emitted as Predicate by `deal build --target sysml-v2` today.
+ */
+
+/** Margin must be non-negative (link, power, momentum). */
+constraint def PositiveMargin(margin : Real) {
+    require margin >= 0.0;
+}
+
+/** Battery depth of discharge stays within the cycle-life ceiling (REQ_SYS_004). */
+constraint def SafeDoD(depthOfDischarge : Real) {
+    require depthOfDischarge <= 0.30;
+}
+
+/** Stored wheel momentum stays below the desaturation threshold. */
+constraint def WheelMomentumBound(stored : Real, maxStorable : Real) {
+    require stored <= maxStorable;
+}

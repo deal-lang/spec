@@ -1,0 +1,64 @@
+@header {
+    path:       packages/analysis/calcs.deal
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package analysis.calcs;
+
+import deal.std.units.{Power, Energy, Length, percent};
+import analysis.constraints.{PositiveMargin, SafeDoD};
+
+/*
+ * Reusable, dimensionally-checked calculations for the HALCYON analyses.
+ * Pure functions — composable inside any expression and bound to evidence
+ * in model/traceability.dealx.
+ *
+ * KerML mapping: `calc def` normalizes M1 to a KerML Function (8.3.4.7.4);
+ * the typed parameters become directed ParameterMembership Features
+ * (M2, 8.3.4.6.4, ordered per D-12) and the `return` expression a
+ * ResultExpressionMembership (8.3.4.7.7). Emitted as Function today.
+ */
+
+/**
+ * Orbit-average available power, derating the generated power by the
+ * eclipse fraction of the orbit.
+ *
+ * KerML mapping (return contract, SD-23): `=> ± percent(2)` has no KerML
+ * equivalent — KerML evaluations are declarative with no precision model
+ * — so the contract is carried as a metadata annotation on the Function
+ * ("carried, not enforced", D-08) and enforced by the DEAL compute engine.
+ */
+calc def OrbitAvgPower(generated : Power, eclipseFraction : Real) : Power => ± percent(2) {
+    return generated * (1.0 - eclipseFraction);
+}
+
+/** Battery depth of discharge; the predicate ref ties the result to REQ_SYS_004. */
+calc def DepthOfDischarge(dischargeEnergy : Energy, capacity : Energy) : Real => sig 3, SafeDoD {
+    return dischargeEnergy / capacity;
+}
+
+/**
+ * X-band link margin in dB. Inputs and result are carried as Real because
+ * deal-std/0.1 has no logarithmic (dB) unit; the predicate ref asserts a
+ * non-negative margin.
+ */
+calc def LinkMargin(receivedPower_dBW : Real, requiredPower_dBW : Real) : Real => sig 3, PositiveMargin {
+    return receivedPower_dBW - requiredPower_dBW;
+}
+
+/** Total reaction-wheel momentum storage (N·m·s carried as Real). */
+calc def MomentumStorage(perWheel_Nms : Real, wheelCount : Real) : Real => sig 3 {
+    return perWheel_Nms * wheelCount;
+}
+
+/**
+ * Ground sample distance: altitude × detector pitch ÷ focal length.
+ * Dimensionally Length·Length ÷ Length = Length — checked by the compiler.
+ */
+calc def GroundSampleDistance(altitude : Length, pixelPitch : Length, focalLength : Length) : Length => sig 3 {
+    return altitude * pixelPitch / focalLength;
+}
