@@ -41,6 +41,11 @@ part def RadiatorPanel {
         attribute absorptivityEOL : Real [1] = 0.21;
         in port strapIn : ConductiveStrapPort [4];
         attribute mass : Mass [1] = kg(0.3);
+        // Reduced-model boundary nodes consumed by spacecraft_thermal:
+        // battery dissipation and hot/cold radiator sink temperatures.
+        attribute batteryDissipation : Power [1] = W(5);
+        attribute hotSinkTemp : Temperature [1] = degC(18);
+        attribute coldSinkTemp : Temperature [1] = degC(-30);
     )
 }
 

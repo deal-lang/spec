@@ -1,16 +1,127 @@
-# HALCYON simulation registry — v0 JSON contract (spec/sims/v0/).
-# Populated in Phase 6. Planned entries:
+# HALCYON simulation registry — DEAL Simulation Protocol v0 (spec/sims/v0/).
 #
-#   [simulations.eps_energy_balance]   tool=python  entry=power/eps_energy_balance.py
-#   [simulations.spacecraft_thermal]   tool=python  entry=thermal/spacecraft_thermal.py
-#   [simulations.link_budget]          tool=python  entry=comms/link_budget.py
-#   [simulations.detumble_bdot]        tool=matlab  entry=adcs/detumble_bdot.m
-#   [simulations.pointing_jitter]      tool=matlab  entry=adcs/pointing_jitter.m
-#   [simulations.eclipse_power]        tool=matlab  entry=orbit/eclipse_power.m
+# Maps @simulation annotations to executable models. Inputs/outputs bind sim
+# parameters to model paths in model/halcyon.dealx; sims chain when one sim's
+# output model_path matches another's input model_path (eclipse_power feeds
+# eps_energy_balance through Halcyon.eclipseFraction / Halcyon.orbitPeriod).
 #
-# Each binds_to a part carrying an @simulation:<<computes>> annotation and
-# declares inputs/outputs with units; evidence consumed by satisfy blocks in
-# model/traceability.dealx.
+#   deal simulate <name> | --all | --stale
+#   deal check --simulations            validate bindings without running
+#   deal check --verify --run-sims      run, then evaluate satisfy criteria
+#   deal evidence baseline <tag>        snapshot evidence
 
 [registry]
 schema = "deal-sims/0.1"
+
+# ─── Orbit geometry (feeds the power budget) ─────────────────────────────────
+[simulations.eclipse_power]
+tool = "matlab"
+entry = "orbit/eclipse_power.m"
+runner = "matlab -batch \"eclipse_power\""
+binds_to = "model/halcyon.dealx::Halcyon"
+annotation = "@simulation:<<computes>> orbitGeometry"
+reproducibility = "tolerant"
+inputs = [
+    { model_path = "Halcyon.altitude", param = "altitude_km", unit = "km" },
+    { model_path = "Halcyon.betaAngle", param = "betaAngle_deg", unit = "deg" },
+]
+outputs = [
+    { param = "maxEclipseFraction", model_path = "Halcyon.eclipseFraction" },
+    { param = "orbitPeriod_s", model_path = "Halcyon.orbitPeriod", unit = "s" },
+    { param = "orbitPeriod_min", unit = "min" },
+]
+
+# ─── EPS orbit energy balance ────────────────────────────────────────────────
+[simulations.eps_energy_balance]
+tool = "python"
+entry = "power/eps_energy_balance.py"
+class = "EpsEnergyBalance"
+binds_to = "packages/spacecraft/eps.deal::BatteryPack"
+annotation = "@simulation:<<computes>> energyBalance"
+reproducibility = "strict"
+auto_run = true
+inputs = [
+    { model_path = "EnergyStorage.pdu.arrayPowerEOL", param = "arrayPowerEOL_W", unit = "W" },
+    { model_path = "EnergyStorage.pdu.orbitAvgLoad", param = "orbitAvgLoad_W", unit = "W" },
+    { model_path = "Halcyon.eclipseFraction", param = "eclipseFraction" },
+    { model_path = "Halcyon.orbitPeriod", param = "orbitPeriod_s", unit = "s" },
+    { model_path = "EnergyStorage.battery.usableCapacity", param = "usableCapacity_Wh", unit = "Wh" },
+]
+outputs = [
+    { param = "orbitEnergyMargin", unit = "Wh" },
+    { param = "depthOfDischarge" },
+]
+
+# ─── Spacecraft thermal (battery hot/cold) ───────────────────────────────────
+[simulations.spacecraft_thermal]
+tool = "python"
+entry = "thermal/spacecraft_thermal.py"
+class = "SpacecraftThermal"
+binds_to = "packages/spacecraft/thermal.deal::HeaterCircuit"
+annotation = "@simulation:<<computes>> thermalBalance"
+reproducibility = "strict"
+inputs = [
+    { model_path = "Thermal.radiator.batteryDissipation", param = "batteryDissipation_W", unit = "W" },
+    { model_path = "Thermal.radiator.hotSinkTemp", param = "hotSinkTemp_C", unit = "degC" },
+    { model_path = "Thermal.radiator.coldSinkTemp", param = "coldSinkTemp_C", unit = "degC" },
+]
+outputs = [
+    { param = "batteryMaxTemp", unit = "degC" },
+    { param = "batteryMinTemp", unit = "degC" },
+]
+
+# ─── X-band downlink link budget ─────────────────────────────────────────────
+[simulations.link_budget]
+tool = "python"
+entry = "comms/link_budget.py"
+class = "LinkBudget"
+binds_to = "packages/spacecraft/comms.deal::XBandTransmitter"
+annotation = "@simulation:<<computes>> linkBudget"
+reproducibility = "strict"
+inputs = [
+    { model_path = "Comms.comms.xtx.rfPort.txPower", param = "txPower_W", unit = "W" },
+    { model_path = "Comms.comms.xbandAntenna.gain_dBi", param = "antennaGain_dBi", unit = "dBi" },
+    { model_path = "Comms.comms.xtx.rfPort.centerFrequency", param = "frequency_GHz", unit = "GHz" },
+    { model_path = "Comms.comms.xtx.rfPort.symbolRate", param = "symbolRate_sps", unit = "Hz" },
+]
+outputs = [
+    { param = "ebno_dB", unit = "dB" },
+    { param = "linkMargin_dB", unit = "dB" },
+    { param = "dailyVolumeGbit", unit = "Gbit" },
+]
+
+# ─── ADCS B-dot detumble ─────────────────────────────────────────────────────
+[simulations.detumble_bdot]
+tool = "matlab"
+entry = "adcs/detumble_bdot.m"
+runner = "matlab -batch \"detumble_bdot\""
+binds_to = "packages/spacecraft/adcs.deal::Magnetorquer"
+annotation = "@simulation:<<computes>> detumblePerformance"
+reproducibility = "tolerant"
+inputs = [
+    { model_path = "ADCS.adcs.torquers.dipoleMoment_Am2", param = "dipoleMoment_Am2", unit = "A*m2" },
+    { model_path = "Halcyon.momentOfInertia", param = "inertia_kgm2", unit = "kg*m2" },
+    { model_path = "Halcyon.orbitPeriod", param = "orbitPeriod_s", unit = "s" },
+]
+outputs = [
+    { param = "detumbleTime_orbits", unit = "orbit" },
+    { param = "detumbleTime_s", unit = "s" },
+    { param = "finalRate_deg_s", unit = "deg/s" },
+]
+
+# ─── ADCS reaction-wheel pointing jitter ─────────────────────────────────────
+[simulations.pointing_jitter]
+tool = "matlab"
+entry = "adcs/pointing_jitter.m"
+runner = "matlab -batch \"pointing_jitter\""
+binds_to = "packages/spacecraft/adcs.deal::ReactionWheel"
+annotation = "@simulation:<<computes>> wheelJitter"
+reproducibility = "tolerant"
+inputs = [
+    { model_path = "ADCS.adcs.wheels.maxSpeed", param = "wheelSpeed_rpm", unit = "rpm" },
+    { model_path = "ADCS.adcs.wheels.staticImbalance", param = "staticImbalance_gmm", unit = "g*mm" },
+]
+outputs = [
+    { param = "rmsPointing", unit = "deg" },
+    { param = "disturbanceTorque_Nm", unit = "N*m" },
+]

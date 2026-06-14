@@ -9,7 +9,7 @@
 }
 package spacecraft.system;
 
-import deal.std.units.{kg};
+import deal.std.units.{kg, km, deg, s};
 import spacecraft.structure.{BusFrame6U};
 import spacecraft.eps.{BatteryPack, SolarArray, PowerDistributionUnit};
 import spacecraft.adcs.{ADCSSuite};
@@ -47,5 +47,14 @@ part def Halcyon {
         part radiator : RadiatorPanel [1];
         part heaters : HeaterCircuit [1];
         attribute dryMass : Mass [1] = kg(11.2);
+
+        // Orbit design point — inputs/outputs of the orbit & power sims.
+        // eclipse_power.m writes eclipseFraction/orbitPeriod; eps_energy_balance
+        // reads them (sim chaining via model_path in deal.sims.toml).
+        attribute altitude : Length [1] = km(550);
+        attribute betaAngle : Angle [1] = deg(0);
+        attribute eclipseFraction : Real [1] = 0.37;
+        attribute orbitPeriod : Duration [1] = s(5730);
+        attribute momentOfInertia : Real [1] = 0.05;
     )
 }

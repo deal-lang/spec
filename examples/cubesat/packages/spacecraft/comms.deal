@@ -34,6 +34,7 @@ part def AntennaUHF <<specializes>> Antenna {
 part def AntennaXBand <<specializes>> Antenna {
     public (
         attribute polarization : String [1] = "RHCP";
+        <<redefines>> gain_dBi = 6.0;
         port feed : XBandPort [1];
     )
 }
@@ -68,6 +69,12 @@ part def UHFTransceiver {
  */
 part def XBandTransmitter {
     @concerns: "8 W RF inrush vs PDU latching-limiter trip curve — bench test pending"
+    @simulation:<<computes>> linkBudget {
+        equation: "X-band downlink Eb/N0 margin and daily data volume";
+        tool: "python";
+        entry: "simulations/comms/link_budget.py";
+        fidelity: "analytical";
+    }
     public (
         port rfPort : XBandPort [1];
         in port dataIn : SpaceWirePort [1];

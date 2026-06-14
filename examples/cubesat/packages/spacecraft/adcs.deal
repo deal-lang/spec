@@ -47,7 +47,7 @@ part def ReactionWheel <<specializes>> AttitudeActuator {
         attribute momentumStorage : Real [1] = 0.015;
         attribute maxTorque : Real [1] = 0.004;
         attribute maxSpeed : AngularVelocity [1] = rpm(6000);
-        attribute staticImbalance : Real [1];
+        attribute staticImbalance : Real [1] = 5.0;
     )
 }
 

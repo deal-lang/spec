@@ -152,5 +152,8 @@ part def PowerDistributionUnit {
         port telemetry : CANPort [1];
         attribute mpptEfficiency : Real [1] = 0.96;
         attribute telemetrySample : PowerTelemetry [1];
+        // Power-budget rollups consumed by eps_energy_balance.
+        attribute arrayPowerEOL : Power [1] = W(58);
+        attribute orbitAvgLoad : Power [1] = W(20);
     )
 }
