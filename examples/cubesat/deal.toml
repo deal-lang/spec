@@ -19,6 +19,14 @@ packages = [
     "packages/analysis",
 ]
 
+# Frontier/draft packages excluded from `deal check` directory expansion: they
+# are written to the locked BH-1..BH-7 behavior designs ahead of the grammar
+# and intentionally do not parse on today's CLI. Check them explicitly with
+# `deal parse packages/behaviors/*.deal` to see the expected diagnostics.
+exclude = [
+    "packages/behaviors",
+]
+
 [workspace.aliases]
 spacecraft = "packages/spacecraft"
 interfaces = "packages/interfaces"

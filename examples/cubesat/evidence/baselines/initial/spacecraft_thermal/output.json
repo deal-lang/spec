@@ -1,0 +1,15 @@
+{
+  "deal_sim_protocol": "v0",
+  "exit_code": 0,
+  "outputs": {
+    "batteryMaxTemp": {
+      "unit": "degC",
+      "value": 25.5
+    },
+    "batteryMinTemp": {
+      "unit": "degC",
+      "value": 2.0
+    }
+  },
+  "v": 1
+}

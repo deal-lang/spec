@@ -1,0 +1,69 @@
+@header {
+    path:       packages/behaviors/activities.deal
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package behaviors.activities;
+
+import interfaces.data.{ImageData};
+
+/*
+ * FRONTIER — written to the LOCKED behavior designs (BH-1..BH-7) ahead of the
+ * grammar landing. Excluded from [workspace].packages; EXPECTED to fail
+ * `deal parse` until the BH action/flow productions land.
+ *
+ * Imaging-pass activity: the formal control+data flow behind the ImagingPass
+ * use case. Exercises every control node the viewer's P4 activity diagram
+ * renders — start/done, decision/merge, fork/join — plus typed item flows.
+ *
+ * KerML mapping: `action def` is a KerML Behavior (8.3.4.6.2) whose sub-actions
+ * are Steps (8.3.4.6.3, BH-7); directed pins are ParameterMembership Features
+ * (8.3.4.6.4). The `->` succession chain lowers to Succession (8.3.4.5.4,
+ * BH-2); `decide{}` / `par{}` lower to stdlib DecisionNode+MergeNode /
+ * ForkNode+JoinNode control actions (BH-3); `~>` item flow lowers to
+ * SuccessionFlow (8.3.4.9.6, BH-6).
+ */
+action def ImagingPassActivity {
+    in  targetId    : String;
+    in  sunElevation : Real;
+    out product     : ImageData;
+
+    // Sub-actions = Steps in the activity.
+    action acquireState;
+    action slewToTarget;
+    action warmUpImager;
+    action captureScene { out frame : ImageData; }
+    action storeProduct { in data : ImageData; }
+    action resumeNadir;
+
+    // Control flow: gate on target visibility (decision/merge), then run the
+    // slew and imager warm-up concurrently (fork/join) before capture.
+    start -> acquireState -> decide {
+        [sunElevation >= 20.0] -> par {
+            -> slewToTarget
+            -> warmUpImager
+        } -> captureScene
+        [else] -> done
+    }
+    captureScene -> storeProduct -> resumeNadir -> done;
+
+    // Object flow: the captured frame feeds the store step, typed by a flow def.
+    captureScene.frame ~> storeProduct.data : ImageData;
+}
+
+/*
+ * @opaque escape hatch (BH-1 / gap §4.5 keystone) — preserve a SysML v2
+ * construct DEAL does not surface (an occurrence-portioned timeslice) verbatim
+ * so import/export round-trips are lossless. Targets KerML TextualRepresentation
+ * (8.3.2.3.6). EXPECTED to fail today until @opaque lands.
+ */
+@opaque:sysml-v2 """
+    occurrence def DeployedConfig :> Occurrences::Occurrence {
+        timeslice stowed;
+        timeslice deployed;
+    }
+"""

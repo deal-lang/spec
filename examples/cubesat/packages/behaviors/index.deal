@@ -24,6 +24,7 @@
  */
 package behaviors;
 
-// Phase 7 exports — uncomment as files land:
+// FRONTIER exports — these reference draft constructs that do not parse on
+// today's grammar, so they stay commented until the BH productions land:
 // export modes.{MissionModes};
 // export activities.{ImagingPassActivity};

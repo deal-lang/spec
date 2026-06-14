@@ -1,0 +1,49 @@
+{
+  "sims": {
+    "detumble_bdot": {
+      "content_hash": "e181fe6108e642091a9a4b4b03feb5a44aab7a367737c27474df7515f0995580",
+      "reproducibility_tier": "tolerant",
+      "tool": "matlab",
+      "tool_version": "unknown",
+      "verdict": "PARTIAL"
+    },
+    "eclipse_power": {
+      "content_hash": "2635a429f711c75186e12b9d88f144875e9eb90efee592f50aacbce0ce210833",
+      "reproducibility_tier": "tolerant",
+      "tool": "matlab",
+      "tool_version": "unknown",
+      "verdict": "PARTIAL"
+    },
+    "eps_energy_balance": {
+      "content_hash": "2cc2bec02b5ee01ac18580ba781ac69d28d5b85f6726059322be953f6427743b",
+      "reproducibility_tier": "tolerant",
+      "tool": "python",
+      "tool_version": "3.14.5",
+      "verdict": "PARTIAL"
+    },
+    "link_budget": {
+      "content_hash": "8a42ba6bacc2e7fb14cad0fa0b3d8c21349ea9308532a36542c4b8bf70d27c48",
+      "reproducibility_tier": "tolerant",
+      "tool": "python",
+      "tool_version": "3.14.5",
+      "verdict": "PARTIAL"
+    },
+    "pointing_jitter": {
+      "content_hash": "ba83129b5cae51149bdd3245e89ec77a6e776c001857abb6572c700e2793cb96",
+      "reproducibility_tier": "tolerant",
+      "tool": "matlab",
+      "tool_version": "unknown",
+      "verdict": "PARTIAL"
+    },
+    "spacecraft_thermal": {
+      "content_hash": "b715a8a89a1085384fb3452b42deca6467b99acd3484f80d8c574ca297248a48",
+      "reproducibility_tier": "tolerant",
+      "tool": "python",
+      "tool_version": "3.14.5",
+      "verdict": "PARTIAL"
+    }
+  },
+  "tag": "initial",
+  "timestamp": "2026-06-14T17:02:39Z",
+  "v": 1
+}

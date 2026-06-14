@@ -1,0 +1,14 @@
+{
+  "deal_sim_protocol": "v0",
+  "exit_code": 0,
+  "outputs": {
+    "depthOfDischarge": {
+      "value": 0.0732
+    },
+    "orbitEnergyMargin": {
+      "unit": "Wh",
+      "value": 17.6
+    }
+  },
+  "v": 1
+}

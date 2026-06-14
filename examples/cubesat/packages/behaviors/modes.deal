@@ -1,0 +1,72 @@
+@header {
+    path:       packages/behaviors/modes.deal
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package behaviors.modes;
+
+/*
+ * FRONTIER — written to the LOCKED behavior designs (BH-1..BH-7) ahead of the
+ * grammar landing. Excluded from [workspace].packages in deal.toml; this file
+ * is EXPECTED to fail `deal parse` until the BH state-machine productions land.
+ *
+ * HALCYON mission-mode state machine: the operational twin of the use cases in
+ * packages/use-cases. Mode flow is
+ *   Detumble -> Safe -> Nominal -> { Imaging | Downlink } -> Nominal,
+ * with a fault transition from every operational mode back to Safe.
+ *
+ * KerML mapping: state machines are SysML-level — StateUsage has no transition
+ * metaclass in KerML (BH-4); transitions/entry/exit sit outside the 84-atom
+ * KerML accounting. A one-line transition `on TRIGGER [GUARD] / EFFECT -> TARGET`
+ * collapses trigger + guard + effect + target into a SysML TransitionUsage;
+ * `entry|do|exit / BEHAVIOR` become the state's entry / doActivity / exit
+ * Features. The `start -> S` / `S -> done` successions lower to KerML Succession
+ * (8.3.4.5.4 · KerML 7.4.6.4).
+ */
+state def MissionModes {
+    start -> Detumble;
+
+    // Post-separation: null the tumble rate with the magnetorquers (B-dot).
+    state Detumble {
+        do / runBdotControl();
+        on DetumbleComplete [bodyRate < 2.0] -> Safe;
+    }
+
+    // Power-positive, sun-pointed survival mode; the fault sink for all modes.
+    state Safe {
+        entry / sunPoint();
+        do    / chargeBattery();
+        on GroundResume [stateOfCharge >= 0.5] / clearFault() -> Nominal;
+        on EndOfLife -> done;
+    }
+
+    // Nominal operations: maintain attitude, dispatch imaging/downlink.
+    state Nominal {
+        do / maintainNadir();
+        on ImagingScheduled [stateOfCharge >= 0.5] -> Imaging;
+        on DownlinkWindow                          -> Downlink;
+        on FaultDetected / shedLoads()             -> Safe;
+    }
+
+    // Imaging pass — slew, collect, return to nadir.
+    state Imaging {
+        entry / slewToTarget();
+        do    / captureScene();
+        exit  / resumeNadir();
+        on ImagingComplete                         -> Nominal;
+        on FaultDetected [faultSeverity >= 2] / abortCollect() -> Safe;
+    }
+
+    // X-band downlink pass.
+    state Downlink {
+        entry / acquireGroundStation();
+        do    / transmitProducts();
+        on DownlinkComplete -> Nominal;
+        on LinkLost         -> Nominal;
+        on FaultDetected    -> Safe;
+    }
+}

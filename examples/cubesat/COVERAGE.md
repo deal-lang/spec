@@ -80,14 +80,19 @@ exists in the named file AND (core) passes `deal check`.
 
 ## C · Frontier (`packages/behaviors/`, variants extras) — `status: draft`, excluded from default check
 
-| ✓ | Construct | Planned exemplar | Anticipates |
+Frontier marker ⊟ = WRITTEN to the locked BH design intent but EXPECTED to
+fail `deal parse` until the grammar lands (verified in-sandbox: modes.deal →
+E0100, activities.deal → E0120/E0100). Excluded from `deal check` via
+`[workspace].exclude = ["packages/behaviors"]`.
+
+| ✓ | Construct | Exemplar | Anticipates |
 |---|---|---|---|
-| ☐ | `state def` FSM, entry/do/exit, trigger/guard/effect | `behaviors/modes.deal` | BH-4..BH-7 (LOCKED, no grammar) — SysML-level, no KerML metaclass |
-| ☐ | `action def`, `->` successions, `decide/par/loop` | `behaviors/activities.deal` | BH-1..BH-3 → Behavior/Step/Succession (8.3.4.6.x, 8.3.4.5.4) |
-| ☐ | `~>` item flow | `behaviors/activities.deal` | BH-7 → SuccessionFlow (8.3.4.9.6) |
-| ☐ | `variation` usage modifier exercised | `model/variants/` | gap doc §3.2 |
-| ☐ | timeslice/snapshot | **no DEAL surface** — document as @opaque-on-import case in variants doc comment | strategy M6/keystone §4.5 |
-| ☐ | `@opaque:sysml-v2` example (if syntax probe passes) | `behaviors/activities.deal` tail | TextualRepresentation 8.3.2.3.6 (keystone ADD) |
+| ⊟ | `state def` FSM, entry/do/exit, on/guard/effect transitions | `behaviors/modes.deal` (MissionModes) | BH-4..BH-7 (LOCKED, no grammar) — SysML-level TransitionUsage, no KerML metaclass |
+| ⊟ | `action def`, `->` successions, `decide{}`/`par{}` | `behaviors/activities.deal` (ImagingPassActivity) | BH-1..BH-3 → Behavior/Step/Succession + Decision/Fork control nodes (8.3.4.6.x, 8.3.4.5.4) |
+| ⊟ | `~>` item flow | `behaviors/activities.deal` (frame ~> data : ImageData) | BH-6 → SuccessionFlow (8.3.4.9.6) |
+| ☐ | `variation` usage modifier exercised | `model/variants/` — variant *configs* used instead; modifier not exercised | gap doc §3.2 |
+| ⊟ | timeslice/snapshot | `behaviors/activities.deal` @opaque example (DeployedConfig timeslice) | strategy M6/keystone §4.5 |
+| ⊟ | `@opaque:sysml-v2` example | `behaviors/activities.deal` tail | TextualRepresentation 8.3.2.3.6 (keystone ADD) |
 
 ## D · `.dealview` constructs (Phase 8)
 
