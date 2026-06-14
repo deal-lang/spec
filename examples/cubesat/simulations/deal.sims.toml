@@ -80,7 +80,7 @@ annotation = "@simulation:<<computes>> linkBudget"
 reproducibility = "strict"
 inputs = [
     { model_path = "Comms.comms.xtx.rfPort.txPower", param = "txPower_W", unit = "W" },
-    { model_path = "Comms.comms.xbandAntenna.gain_dBi", param = "antennaGain_dBi", unit = "dBi" },
+    { model_path = "Comms.comms.xtx.antennaGain_dBi", param = "antennaGain_dBi", unit = "dBi" },
     { model_path = "Comms.comms.xtx.rfPort.centerFrequency", param = "frequency_GHz", unit = "GHz" },
     { model_path = "Comms.comms.xtx.rfPort.symbolRate", param = "symbolRate_sps", unit = "Hz" },
 ]

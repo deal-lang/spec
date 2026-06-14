@@ -38,6 +38,10 @@ part def AntennaXBand <<specializes>> Antenna {
         port feed : XBandPort [1];
     )
 }
+// NOTE: AntennaXBand.gain_dBi carries the antenna's physical gain via a
+// redefinition. The link_budget sim instead binds to a plain attribute on
+// XBandTransmitter (below) because the deal-sim model-value resolver reads
+// declared attribute defaults, not <<redefines>> values.
 
 /**
  * UHF TT&C transceiver — always-on command path and beacon.
@@ -81,6 +85,8 @@ part def XBandTransmitter {
         in port powerIn : Rail12V [1];
         attribute dcPower : Power [1] = W(30);
         attribute mass : Mass [1] = kg(0.35);
+        // Effective downlink antenna gain, used by the link_budget sim binding.
+        attribute antennaGain_dBi : Real [1] = 6.0;
     )
 }
 
