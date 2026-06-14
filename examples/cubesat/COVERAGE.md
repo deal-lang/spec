@@ -118,7 +118,7 @@ exists in the named file AND (core) passes `deal check`.
 |---|---|---|
 | ☑ | 3 Python sims on deal-sim SDK | `simulations/{power/eps_energy_balance,thermal/spacecraft_thermal,comms/link_budget}.py` — run end-to-end in-sandbox, valid v0 output, criteria-passing values |
 | ☑ | 3 MATLAB sims via `matlab -batch` adapter | `simulations/{orbit/eclipse_power,adcs/detumble_bdot,adcs/pointing_jitter}.m` — jsondecode/jsonencode v0 contract; physics verified via Python port (MATLAB execution pending local run) |
-| ☐ | graceful-skip path exercised once (exit 3 → skip.json, D-72) | runs on a machine without MATLAB (David) |
+| ☑ | graceful-skip path exercised (skip.json, D-72) | confirmed on David's run — MATLAB absent → sims skip cleanly |
 | ☑ | v0 contract: alphabetical keys (D-18), staleness keys (D-83), repro tiers (D-75) | SDK emits sorted v0 envelope; `reproducibility` strict(py)/tolerant(matlab) in registry |
 | ☑ | `deal.sims.toml`: binds_to, inputs/outputs, auto_run | `simulations/deal.sims.toml` — 6 sims, eclipse→eps chaining via model_path |
 | ☐ | evidence baseline captured (`deal evidence baseline initial`) | David's run: `deal simulate --all` + `deal check --verify --run-sims` |

@@ -17,7 +17,7 @@ schema = "deal-sims/0.1"
 [simulations.eclipse_power]
 tool = "matlab"
 entry = "orbit/eclipse_power.m"
-runner = "matlab -batch \"eclipse_power\""
+runner = "matlab"
 binds_to = "model/halcyon.dealx::Halcyon"
 annotation = "@simulation:<<computes>> orbitGeometry"
 reproducibility = "tolerant"
@@ -94,7 +94,7 @@ outputs = [
 [simulations.detumble_bdot]
 tool = "matlab"
 entry = "adcs/detumble_bdot.m"
-runner = "matlab -batch \"detumble_bdot\""
+runner = "matlab"
 binds_to = "packages/spacecraft/adcs.deal::Magnetorquer"
 annotation = "@simulation:<<computes>> detumblePerformance"
 reproducibility = "tolerant"
@@ -113,7 +113,7 @@ outputs = [
 [simulations.pointing_jitter]
 tool = "matlab"
 entry = "adcs/pointing_jitter.m"
-runner = "matlab -batch \"pointing_jitter\""
+runner = "matlab"
 binds_to = "packages/spacecraft/adcs.deal::ReactionWheel"
 annotation = "@simulation:<<computes>> wheelJitter"
 reproducibility = "tolerant"
