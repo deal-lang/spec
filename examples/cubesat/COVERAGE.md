@@ -1,9 +1,13 @@
 # HALCYON Coverage Ledger
 
-> **Gate status (2026-06-14):** Phases 1–3 `deal check ../spec/examples/cubesat`
-> clean on a release build. Two upstream features landed to get here:
-> real deal-stdlib loading in `deal check` (multi-file NUL parse + path-dep
-> seeding) and the new `actor def` construct (SD-18b). Phases 4–9 pending.
+> **Gate status (2026-06-14):** Phases 1–6 done. `deal check` clean; the full
+> sim chain runs (3 Python + 3 MATLAB) and `deal check --verify --run-sims`
+> reports **5 PASS, 1 PARTIAL** (REQ_SYS_002 partial by design — TVAC gap).
+> Upstream features/fixes landed to get here: real deal-stdlib loading
+> (multi-file NUL parse + path-dep seeding), the `actor def` construct
+> (SD-18b), MATLAB dispatch (cwd+addpath), negative-literal resolution,
+> verify absolute-root + path expansion, and bare-output-key evidence
+> resolution. Phases 7–9 pending.
 
 
 Every grammar construct, viewer contract requirement, and KerML-mapping
@@ -121,4 +125,5 @@ exists in the named file AND (core) passes `deal check`.
 | ☑ | graceful-skip path exercised (skip.json, D-72) | confirmed on David's run — MATLAB absent → sims skip cleanly |
 | ☑ | v0 contract: alphabetical keys (D-18), staleness keys (D-83), repro tiers (D-75) | SDK emits sorted v0 envelope; `reproducibility` strict(py)/tolerant(matlab) in registry |
 | ☑ | `deal.sims.toml`: binds_to, inputs/outputs, auto_run | `simulations/deal.sims.toml` — 6 sims, eclipse→eps chaining via model_path |
-| ☐ | evidence baseline captured (`deal evidence baseline initial`) | David's run: `deal simulate --all` + `deal check --verify --run-sims` |
+| ☑ | satisfy criteria evaluated end-to-end (5 PASS, 1 PARTIAL) | `deal check --verify --run-sims` — model values → sim physics → evidence → criteria → compute margins |
+| ☐ | evidence baseline captured (`deal evidence baseline initial`) | David's snapshot step |
