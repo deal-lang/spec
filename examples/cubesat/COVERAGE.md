@@ -62,17 +62,17 @@ exists in the named file AND (core) passes `deal check`.
 
 | ✓ | Construct | Planned exemplar | KerML target (mech · status) |
 |---|---|---|---|
-| ☐ | `[<system>]` / `[<subsystem>]` | `model/halcyon.dealx` | PartUsage tree (M1/M2 · impl-generic) |
-| ☐ | instance `[<T as="x" attr={…} />]` | `model/halcyon.dealx` | PartUsage instance (M1 · designed) |
-| ☐ | inline object literal / proplist | `model/halcyon.dealx` (connect via) | ConstructorExpression (M3 · partial, CS-8) |
-| ☐ | `[<connect from to via carrying />]` | `model/halcyon.dealx` | ConnectionUsage + connectorEnd (M1 · impl); EndFeatureMembership/CrossSubsetting (M2) |
-| ☐ | `[<expose />]` chains | `model/halcyon.dealx` (umbilical) | PortUsage re-export (M1 · impl, CS-6) |
-| ☐ | `[<allocate relationship=<<derives>> />]` | `model/traceability.dealx` | Dependency (M2 · impl-generic) |
-| ☐ | `[<satisfy>]` + criteria + evidence maps + `compute` | `model/traceability.dealx` | Dependency kind "satisfy" (M1 · impl); evidence designed |
-| ☐ | `gap {}` block (honest open item) | `model/traceability.dealx` (jitter TVAC) | — |
-| ☐ | `[<validate>]` | `model/traceability.dealx` | Dependency-flavored (M1 · impl-generic) |
-| ☐ | variants (two `.dealx` configs) | `model/variants/{multispec,hyperspec}.dealx` | SysML variation/variant membership (partial — semantics pending, gap §3.2) |
-| ☐ | dotted navigation `Trace.REQ.field` | `model/traceability.dealx` | FeatureChaining per segment (M2 · designed, CS-15) |
+| ☑ | `[<system>]` / `[<subsystem>]` | `model/halcyon.dealx` | PartUsage tree (M1/M2 · impl-generic) |
+| ☑ | instance `[<T as="x" attr={…} />]` | `model/halcyon.dealx` | PartUsage instance (M1 · designed) |
+| ☑ | inline object literal / proplist | `model/halcyon.dealx` (connect via) | ConstructorExpression (M3 · partial, CS-8) |
+| ☑ | `[<connect from to via carrying />]` | `model/halcyon.dealx` | ConnectionUsage + connectorEnd (M1 · impl); EndFeatureMembership/CrossSubsetting (M2) |
+| ☑ | `[<expose />]` chains | `model/halcyon.dealx` (umbilical) | PortUsage re-export (M1 · impl, CS-6) |
+| ☑ | `[<allocate relationship=<<derives>> />]` | `model/traceability.dealx` | Dependency (M2 · impl-generic) |
+| ☑ | `[<satisfy>]` + criteria + evidence maps + `compute` | `model/traceability.dealx` | Dependency kind "satisfy" (M1 · impl); evidence designed |
+| ☑ | `gap {}` block (honest open item) | `model/traceability.dealx` (jitter TVAC) | — |
+| ☑ | `[<validate>]` | `model/traceability.dealx` | Dependency-flavored (M1 · impl-generic) |
+| ☑ | variants (two `.dealx` configs) | `model/variants/{multispec,hyperspec}.dealx` | SysML variation/variant membership (partial — semantics pending, gap §3.2) |
+| ☑ | dotted navigation `Trace.REQ.field` | `model/traceability.dealx` | FeatureChaining per segment (M2 · designed, CS-15) |
 
 ## C · Frontier (`packages/behaviors/`, variants extras) — `status: draft`, excluded from default check
 

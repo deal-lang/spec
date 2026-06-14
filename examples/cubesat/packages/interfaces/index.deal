@@ -18,3 +18,4 @@ export power.{PowerTelemetry, UnregulatedBusPort, SwitchedRailPort, Rail3V3, Rai
 export data.{CANPort, CANBus, SpaceWirePort, SpaceWireLink, TelemetryFrames, CommandPackets, ImageData};
 export rf.{UHFPort, XBandPort, RFCoaxLink};
 export thermal.{ConductiveStrapPort, HeaterCircuitPort, ThermallyManaged};
+export harnesses.{PowerHarness, DataHarness, PowerFlow};

@@ -1,0 +1,27 @@
+@header {
+    path:       model/variants/multispec.dealx
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package model.variants;
+
+import deal.std.units.{W, mm};
+import spacecraft.*;
+
+/*
+ * Baseline 4-band multispectral configuration (the flight build). A variant
+ * is a partial composition: only the parts whose attributes differ from the
+ * base definition are restated.
+ *
+ * KerML mapping: variants map to SysML variation/variant membership; DEAL's
+ * variation model replaces KerML set-algebra typing (gap doc §3.2). The
+ * `variation` usage modifier and timeslice are frontier (packages/behaviors
+ * + COVERAGE §C) and not exercised here.
+ */
+[<system HalcyonMultispec>]
+        [<MultispectralImager as="imager" bands=4 imagingPower={W(12)} focalLength={mm(580)} />]
+[</system>]

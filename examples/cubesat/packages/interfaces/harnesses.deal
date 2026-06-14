@@ -1,0 +1,51 @@
+@header {
+    path:       packages/interfaces/harnesses.deal
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package interfaces.harnesses;
+
+import deal.std.units.{V, A};
+
+/*
+ * Physical harness/connection types and the power flow carried over them.
+ * Used as the `via` (connection) and `carrying` (flow) of dealx connects in
+ * model/halcyon.dealx.
+ *
+ * KerML mapping: `connection def` normalizes M1 to a KerML Association /
+ * AssociationStructure (SysML ConnectionDefinition, 8.3.4.4.2); a dealx
+ * `connect` instance of it lowers to a ConnectionUsage with a connectorEnd
+ * array (8.3.4.5.3). The `flow def` carried payload targets the
+ * Interaction/Flow crossing (8.3.4.9.2/.4).
+ */
+
+/** Shielded power conductor pair between the PDU and a load. */
+connection def PowerHarness {
+    public (
+        attribute conductorGauge : String [1] = "20 AWG";
+        attribute currentRating : Current [1] = A(5);
+        attribute shielded : Boolean [1] = true;
+    )
+}
+
+/** Multi-conductor data harness (CAN drop or LVDS run). */
+connection def DataHarness {
+    public (
+        attribute wireCount : Integer [1] = 4;
+        attribute twistedPair : Boolean [1] = true;
+        attribute connector : String [1] = "Nano-D";
+    )
+}
+
+/** DC power carried over a PowerHarness. */
+flow def PowerFlow {
+    public (
+        attribute voltage : Voltage [1];
+        attribute current : Current [1];
+        derived attribute power : Power = voltage * current;
+    )
+}

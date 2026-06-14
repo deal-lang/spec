@@ -1,0 +1,23 @@
+@header {
+    path:       model/variants/hyperspec.dealx
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package model.variants;
+
+import deal.std.units.{W, mm};
+import spacecraft.*;
+
+/*
+ * Hyperspectral study configuration — 8 bands at higher imaging power and a
+ * longer focal length, with a beefier payload data handler to match the
+ * higher data rate. Same bus, different payload point.
+ */
+[<system HalcyonHyperspec>]
+        [<MultispectralImager as="imager" bands=8 imagingPower={W(18)} focalLength={mm(720)} />]
+        [<PayloadDataHandler as="pdh" throughput_Mbps=1200.0 />]
+[</system>]

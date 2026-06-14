@@ -1,0 +1,164 @@
+@header {
+    path:       model/traceability.dealx
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package model;
+
+import requirements.*;
+import use_cases.*;
+
+/*
+ * Traceability: needs allocated to system requirements, requirements
+ * satisfied by composition elements with sim/analysis/test evidence, and
+ * use-case validations.
+ *
+ * KerML mapping: a `[<traceability>]` block is a SysML Package of Dependency
+ * elements (CS-9). `allocate` lowers to a Dependency (M2, 8.3.2.2.2);
+ * `satisfy` to a Dependency with kind "satisfy" (CS-10); the typed return
+ * block, criteria, evidence maps and compute populate the satisfy's
+ * evidence contract (CS-13..15, designed). `REQ.field` paths synthesize
+ * FeatureChaining per segment (M2, CS-15).
+ */
+[<traceability>]
+        [<allocate from="NEED_IMAGERY" to="REQ_SYS_001" relationship=<<derives>> />]
+        [<allocate from="NEED_IMAGERY" to="REQ_SYS_002" relationship=<<derives>> />]
+        [<allocate from="NEED_LIFETIME" to="REQ_SYS_003" relationship=<<derives>> />]
+        [<allocate from="NEED_LIFETIME" to="REQ_SYS_004" relationship=<<derives>> />]
+        [<allocate from="NEED_DATA_DELIVERY" to="REQ_SYS_005" relationship=<<derives>> />]
+        [<allocate from="NEED_LIFETIME" to="REQ_SYS_006" relationship=<<derives>> />]
+        [<allocate from="NEED_LAUNCH_COMPAT" to="REQ_SYS_007" relationship=<<derives>> />]
+
+        [<satisfy requirement="REQ_SYS_001" by="Halcyon.Payload.imager" method="analysis">] => {
+            actualGSD: Length;
+            margin: Length;
+        }
+        criteria {
+            actualGSD <= REQ_SYS_001.maxGSD
+        }
+        evidence analysis {
+            description: "GroundSampleDistance calc at 550 km, 5.5 um pitch, 580 mm focal length";
+            maps {
+                gsd -> actualGSD
+            }
+        }
+        compute {
+            margin = REQ_SYS_001.maxGSD - actualGSD;
+        }
+    [</satisfy>]
+
+        [<satisfy requirement="REQ_SYS_002" by="Halcyon.ADCS.adcs" method="simulation" status="partial">] => {
+            actualPointing: Angle;
+            margin: Angle;
+        }
+        criteria {
+            actualPointing <= REQ_SYS_002.pointingError
+        }
+        evidence simulation {
+            source: "simulations/adcs/pointing_jitter.m";
+            binding: "pointing_jitter";
+            maps {
+                rmsPointing -> actualPointing
+            }
+        }
+        compute {
+            margin = REQ_SYS_002.pointingError - actualPointing;
+        }
+        gap {
+            description: "Jitter PSD from analytical wheel-imbalance model only";
+            missing: {
+                tvacCorrelation: "Pointing stability vs focal-plane thermal soak not yet TVAC-correlated"
+            };
+            risk: "medium";
+            mitigation: "TVAC pointing run scheduled with payload integration 2026-Q4";
+        }
+    [</satisfy>]
+
+        [<satisfy requirement="REQ_SYS_003" by="Halcyon" method="simulation">] => {
+            energyMargin: Energy;
+        }
+        criteria {
+            energyMargin >= REQ_SYS_003.minEnergyMargin
+        }
+        evidence simulation {
+            source: "simulations/power/eps_energy_balance.py";
+            binding: "eps_energy_balance";
+            maps {
+                orbitEnergyMargin -> energyMargin
+            }
+        }
+    [</satisfy>]
+
+        [<satisfy requirement="REQ_SYS_004" by="Halcyon.EnergyStorage.battery" method="simulation">] => {
+            actualDoD: Real;
+            margin: Real;
+        }
+        criteria {
+            actualDoD <= REQ_SYS_004.maxDoD
+        }
+        evidence simulation {
+            source: "simulations/power/eps_energy_balance.py";
+            binding: "eps_energy_balance";
+            maps {
+                depthOfDischarge -> actualDoD
+            }
+        }
+        compute {
+            margin = REQ_SYS_004.maxDoD - actualDoD;
+        }
+    [</satisfy>]
+
+        [<satisfy requirement="REQ_SYS_005" by="Halcyon.Comms" method="simulation">] => {
+            dailyVolume: Real;
+            margin: Real;
+        }
+        criteria {
+            dailyVolume >= REQ_SYS_005.minDailyVolume_Gbit
+        }
+        evidence simulation {
+            source: "simulations/comms/link_budget.py";
+            binding: "link_budget";
+            maps {
+                dailyVolumeGbit -> dailyVolume
+            }
+        }
+        compute {
+            margin = dailyVolume - REQ_SYS_005.minDailyVolume_Gbit;
+        }
+    [</satisfy>]
+
+        [<satisfy requirement="REQ_SYS_006" by="Halcyon.Thermal" method="simulation">] => {
+            batteryMaxTemp: Temperature;
+            batteryMinTemp: Temperature;
+            highMargin: Temperature;
+            lowMargin: Temperature;
+        }
+        criteria {
+            batteryMaxTemp <= REQ_SYS_006.maxTemp
+            AND batteryMinTemp >= REQ_SYS_006.minTemp
+        }
+        evidence simulation {
+            source: "simulations/thermal/spacecraft_thermal.py";
+            binding: "spacecraft_thermal";
+            maps {
+                batteryMaxTemp -> batteryMaxTemp,
+                batteryMinTemp -> batteryMinTemp
+            }
+        }
+        compute {
+            highMargin = REQ_SYS_006.maxTemp - batteryMaxTemp;
+            lowMargin = batteryMinTemp - REQ_SYS_006.minTemp;
+        }
+    [</satisfy>]
+
+        [<validate requirement="REQ_SYS_001" by="ImagingPass" scenario="38N daylight target collect, 45 s" status="passed" evidence="Use-case analysis 2026-06-10">]
+    [</validate>]
+        [<validate requirement="REQ_SYS_005" by="DownlinkPass" scenario="X-band pass, 10 deg min elevation, 420 s" status="passed" evidence="Link budget + pass geometry analysis">]
+    [</validate>]
+        [<validate requirement="REQ_SYS_003" by="SafeModeEntry" scenario="Fault-triggered sun-point, loads shed" status="passed" evidence="Safe-mode power-positive by inspection of EPS budget">]
+    [</validate>]
+[</traceability>]

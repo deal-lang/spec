@@ -1,0 +1,89 @@
+@header {
+    path:       model/halcyon.dealx
+    schema:     deal/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package model;
+
+import deal.std.units.{V, A, W, Wh, kg, mm, MHz, GHz, Hz, deg, rpm, percent};
+import spacecraft.*;
+import interfaces.*;
+
+/*
+ * HALCYON flight configuration — instantiates spacecraft.system.Halcyon as
+ * the top-level system and wires its subsystems.
+ *
+ * KerML mapping: the dealx `[<system>]` / `[<subsystem>]` tree lowers to a
+ * PartUsage hierarchy (M1/M2, impl-generic); each `[<Type as="x" .../>]`
+ * instance is a PartUsage typed by Type (CS-3). `connect` → ConnectionUsage
+ * with a connectorEnd array (8.3.4.5.3, CS-4); `expose` re-exports a nested
+ * port as a PortUsage on the enclosing boundary (CS-6).
+ */
+
+[<system Halcyon>]
+
+        [<subsystem EnergyStorage>]
+                [<BatteryPack as="battery" nameplateCapacity={Wh(201)} usableCapacity={Wh(161)} packMass={kg(1.9)} stateOfCharge=0.85 />]
+                [<SolarArray as="wingPort" bolPower={W(34)} eolPower={W(29)} deployed=false />]
+                [<SolarArray as="wingStbd" bolPower={W(34)} eolPower={W(29)} deployed=false />]
+                [<PowerDistributionUnit as="pdu" mpptEfficiency=0.96 />]
+                [<connect from="wingPort.stringOut" to="pdu.arrayIn" via={PowerHarness {conductorGauge: "18 AWG", currentRating: A(3)}} carrying={PowerFlow {voltage: V(14.8), current: A(2.3)}} />]
+                [<connect from="battery.packBus" to="pdu.packIn" via={PowerHarness {conductorGauge: "16 AWG", currentRating: A(10)}} carrying={PowerFlow {voltage: V(14.8), current: A(8)}} />]
+                [<expose pdu.obcRail as="railOBC" />]
+                [<expose pdu.adcsRail as="railADCS" />]
+                [<expose pdu.commsRail as="railComms" />]
+                [<expose pdu.payloadRail as="railPayload" />]
+                [<expose pdu.heaterRail as="railHeater" />]
+    [</subsystem>]
+
+        [<subsystem ADCS>]
+                [<ADCSSuite as="adcs" pointingAccuracy={deg(0.1)} mass={kg(1.4)} />]
+                [<expose adcs.suiteRail as="powerIn" />]
+    [</subsystem>]
+
+        [<subsystem Comms>]
+                [<CommsSuite as="comms" mass={kg(0.9)} />]
+                [<expose comms.uhfAntenna as="uhf" />]
+                [<expose comms.xbandAntenna as="xband" />]
+    [</subsystem>]
+
+        [<subsystem CDH>]
+                [<CDHSuite as="cdh" idlePower={W(1.2)} />]
+    [</subsystem>]
+
+        [<subsystem Payload>]
+                [<MultispectralImager as="imager" imagingPower={W(12)} mass={kg(1.8)} />]
+                [<PayloadDataHandler as="pdh" throughput_Mbps=800.0 />]
+                [<connect from="imager.imageOut" to="pdh.fromImager" via={DataHarness {wireCount: 4, connector: "Nano-D 9"}} carrying={ImageData {tileBytes: 524288}} />]
+                [<expose pdh.toMemory as="productOut" />]
+    [</subsystem>]
+
+        [<subsystem Thermal>]
+                [<HeaterCircuit as="heaters" zones=2 />]
+                [<RadiatorPanel as="radiator" area={mm(0)} emissivity=0.91 />]
+                [<ThermistorNet as="thermistors" channelCount=12 />]
+    [</subsystem>]
+
+        [<subsystem Structure>]
+                [<BusFrame6U as="frame" mass={kg(1.1)} />]
+                [<DeploymentSwitch as="sw1" actuated=false />]
+                [<DeploymentSwitch as="sw2" actuated=false />]
+                [<DeploymentSwitch as="sw3" actuated=false />]
+    [</subsystem>]
+
+        // System-level power distribution (same-source bundling case for the
+        // power IBD view: PDU rails fan out to four loads).
+        [<connect from="EnergyStorage.railADCS" to="ADCS.powerIn" via={PowerHarness {currentRating: A(2)}} carrying={PowerFlow {voltage: V(5), current: A(1.4)}} />]
+        [<connect from="EnergyStorage.railPayload" to="Payload" via={PowerHarness {currentRating: A(3)}} carrying={PowerFlow {voltage: V(12), current: A(2.4)}} />]
+
+        // Payload products to the data store (SpaceWire), then downlink.
+        [<connect from="Payload.productOut" to="CDH" via={DataHarness {wireCount: 4}} carrying={ImageData {tileBytes: 524288}} />]
+
+        // RF antenna feeds — bare connects (no via/carrying).
+        [<connect from="Comms.uhf" to="Structure.frame" />]
+        [<connect from="Comms.xband" to="Structure.frame" />]
+[</system>]
