@@ -10,6 +10,8 @@
 package requirements.system;
 
 import deal.std.units.{kg, km, m, W, Wh, deg, hr, degC, percent};
+import requirements.mission.{REQ_MIS_001, REQ_MIS_003, REQ_MIS_004};
+import requirements.needs.{NEED_LAUNCH_COMPAT};
 
 /**
  * System requirement with a measurable verification contract.

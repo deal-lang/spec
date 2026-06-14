@@ -10,6 +10,7 @@
 package requirements.mission;
 
 import deal.std.units.{km, deg, hr};
+import requirements.needs.{NEED_IMAGERY, NEED_REVISIT, NEED_LIFETIME};
 
 /**
  * Mission-level requirement deriving from stakeholder needs.

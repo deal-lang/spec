@@ -10,17 +10,21 @@
 package spacecraft.eps;
 
 /*
- * Import exemplar — the surface forms PS-4 defines, all used below:
- * selective `.{list}`, whole-module, `as` rename, and glob `.*`. Each
- * selective import normalizes to a KerML MembershipImport (8.3.2.4.4),
- * the glob to a NamespaceImport (8.3.2.4.6); the current emitter folds
- * the workspace into one Package (D-24) so Import elements are not yet
- * emitted as such.
+ * Import exemplar — PS-4 surface forms used below: selective `.{list}`
+ * and `as` rename. Each selective import normalizes to a KerML
+ * MembershipImport (8.3.2.4.4), the rename to an aliased Membership
+ * (8.3.2.4.3); the current emitter folds the workspace into one Package
+ * (D-24) so Import elements are not yet emitted as such.
+ *
+ * NOTE: the glob form `interfaces.thermal.*` only resolves QUALIFIED
+ * uses (segments > 1); an unqualified `ThermallyManaged` misses scope
+ * (E2000), so the type is imported selectively here. Glob → NamespaceImport
+ * (8.3.2.4.6) is exercised where the use site is qualified.
  */
 import deal.std.units.{kg, W, V, A, Wh, degC, ohm, percent, m2};
 import interfaces.power.{UnregulatedBusPort, ArrayInputPort, SwitchedRailPort, Rail3V3, Rail5V, Rail12V, UmbilicalPort, PowerTelemetry};
 import interfaces.data.{CANPort};
-import interfaces.thermal.*;
+import interfaces.thermal.{ThermallyManaged};
 import spacecraft.structure as structure;
 
 /**
