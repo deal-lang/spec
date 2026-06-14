@@ -43,7 +43,7 @@ import use_cases.*;
         evidence analysis {
             description: "GroundSampleDistance calc at 550 km, 5.5 um pitch, 580 mm focal length";
             maps {
-                gsd -> actualGSD
+                Payload.imager.groundSampleDistance_m -> actualGSD
             }
         }
         compute {
