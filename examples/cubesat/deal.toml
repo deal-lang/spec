@@ -26,8 +26,12 @@ reqs       = "packages/requirements"
 use_cases  = "packages/use-cases"
 analysis   = "packages/analysis"
 
+# Path dependency on the in-repo deal-stdlib (D-66, referenced in place).
+# `deal check` seeds dimension/unit definitions from this dep so quantity
+# types (Area, Frequency, …) resolve without per-file import and without the
+# hand-maintained isBuiltinType allowlist. Path is relative to this file.
 [dependencies]
-deal-std = "0.1"
+deal-stdlib = { path = "../../../deal-stdlib" }
 
 [simulations]
 registry = "simulations/deal.sims.toml"
