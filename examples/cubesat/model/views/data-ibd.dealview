@@ -1,0 +1,53 @@
+@header {
+    path:       model/views/data-ibd.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Data Internal Block Diagram — the C&DH bus topology. Exercises crossing hops
+ * (RG-10.8): the CAN housekeeping bus and the SpaceWire payload-data link cross
+ * orthogonally, so the renderer draws a deterministic semicircular hop on the
+ * horizontal segment. Image data flows imager -> PDH -> mass memory -> X-band.
+ */
+view {
+    title: "HALCYON — Data Topology (IBD)";
+    viewpoint: interface;
+    direction: left-to-right;
+    edge-labels: carrying;
+}
+
+include {
+    model.Halcyon.CDH.**;
+    model.Halcyon.Payload.**;
+    model.Halcyon.Comms.xtx;
+}
+
+[deal-id="model.Halcyon.Payload.imager"] {
+    x: 40; y: 60; w: 180; h: 120;
+}
+[deal-id="model.Halcyon.Payload.pdh"] {
+    x: 320; y: 60; w: 180; h: 120;
+}
+[deal-id="model.Halcyon.CDH"] {
+    x: 320; y: 280; w: 220; h: 160;
+}
+
+connect[carrying="ImageData"] {
+    stroke: data;
+    stroke-width: 2;
+    routing: orthogonal;
+}
+connect[carrying="TelemetryFrames"] {
+    stroke: data;
+    line-style: dashed;
+}
+
+// SpaceWire image path crosses the CAN housekeeping bus — hop drawn here.
+[deal-connect="Payload.productOut -> CDH"] {
+    waypoints: (540, 120) (600, 120) (600, 320) (320, 320);
+}

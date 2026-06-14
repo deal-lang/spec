@@ -1,0 +1,45 @@
+@header {
+    path:       model/views/variants.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Variant view — the multispectral and hyperspectral configurations against
+ * the base Halcyon. Exercises the last two connector kinds (RG-10.1):
+ * variation (the payload variation point fans to the two variant configs) and
+ * timeslice (the deployed-vs-stowed occurrence portioning carried in the
+ * @opaque example). The base system is collapsed to a reference box.
+ */
+view {
+    title: "HALCYON — Variants";
+    viewpoint: structure;
+    direction: top-to-bottom;
+}
+
+include {
+    model.variants.HalcyonMultispec.**;
+    model.variants.HalcyonHyperspec.**;
+    model.Halcyon;
+}
+
+[deal-id="model.Halcyon"] {
+    x: 360; y: 40; w: 240; h: 90;
+    collapsed: true;
+}
+[deal-id="model.variants.HalcyonMultispec"] {
+    x: 120; y: 240; w: 320; h: 180;
+    attributes-compartment: visible;
+}
+[deal-id="model.variants.HalcyonHyperspec"] {
+    x: 520; y: 240; w: 320; h: 180;
+    attributes-compartment: visible;
+}
+
+// Variation point edges from the base payload to each config.
+[deal-connect="Halcyon -> HalcyonMultispec"] { waypoints: (440, 130) (280, 240); }
+[deal-connect="Halcyon -> HalcyonHyperspec"] { waypoints: (520, 130) (680, 240); }

@@ -1,0 +1,44 @@
+@header {
+    path:       model/views/full-system.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Full-system view — deliberately includes every element of the composition
+ * AND the part-definition library so the visible first-class element count
+ * exceeds the legibility budget (RG-6: 50 elements, Mendling et al.). The
+ * viewer must respond with the auto-collapse banner + a per-view budget
+ * override, and apply LOD bands as the user zooms (titled boxes < 0.3, edges +
+ * ports 0.3–0.6, full detail >= 0.6). This view sets a higher budget so the
+ * user can opt into the dense layout.
+ */
+view {
+    title: "HALCYON — Full System (dense)";
+    viewpoint: structure;
+    direction: left-to-right;
+    grid: 10;
+    element-budget: 90;
+}
+
+include {
+    model.Halcyon.**;
+    spacecraft.**;
+    interfaces.**;
+}
+
+// A couple of anchor placements; the rest is auto-laid-out then collapsed by
+// the legibility pass until the user expands branches.
+[deal-id="model.Halcyon"] {
+    x: 20; y: 20; w: 1600; h: 1000;
+}
+[deal-id="model.Halcyon.Structure"] {
+    collapsed: true;
+}
+[deal-id="model.Halcyon.Thermal"] {
+    collapsed: true;
+}

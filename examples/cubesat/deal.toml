@@ -49,18 +49,20 @@ cache_dir = ".deal/simulations"
 # Workspace theme — type-level defaults applied to every view (GV-9).
 theme = "model/global.dealview"
 
-# Co-location handles: model/halcyon.dealview, model/traceability.dealview,
-# model/variants/{multispec,hyperspec}.dealview.
+# Co-located views (auto-discovered: <name>.dealview beside <name>.dealx):
+#   model/halcyon.dealview, model/traceability.dealview.
 #
-# Cross-cutting views (Phase 8) — uncomment as each lands:
-# structure-bdd    = { source = "packages/spacecraft/index.deal",  view = "model/views/structure-bdd.dealview" }
-# power-ibd        = { source = "model/halcyon.dealx",             view = "model/views/power-ibd.dealview" }
-# data-ibd         = { source = "model/halcyon.dealx",             view = "model/views/data-ibd.dealview" }
-# icd              = { source = "model/halcyon.dealx",             view = "model/views/icd.dealview" }
-# modes-fsm        = { source = "packages/behaviors/modes.deal",      view = "model/views/modes-fsm.dealview" }      # frontier
-# imaging-activity = { source = "packages/behaviors/activities.deal", view = "model/views/imaging-activity.dealview" } # frontier
-# variants         = { source = "model/variants/multispec.dealx",  view = "model/views/variants.dealview" }
-# full-system      = { source = "model/halcyon.dealx",             view = "model/views/full-system.dealview" }
+# Cross-cutting views — membership drawn from multiple files. `source` is also
+# the insertion target for new model content created by editing through a view.
+structure-bdd    = { source = "packages/spacecraft/index.deal",     view = "model/views/structure-bdd.dealview" }
+power-ibd        = { source = "model/halcyon.dealx",                view = "model/views/power-ibd.dealview" }
+data-ibd         = { source = "model/halcyon.dealx",                view = "model/views/data-ibd.dealview" }
+icd              = { source = "model/halcyon.dealx",                view = "model/views/icd.dealview" }
+variants         = { source = "model/variants/multispec.dealx",     view = "model/views/variants.dealview" }
+full-system      = { source = "model/halcyon.dealx",                view = "model/views/full-system.dealview" }
+# Frontier behavior views — sources don't parse on today's grammar (BH):
+modes-fsm        = { source = "packages/behaviors/modes.deal",      view = "model/views/modes-fsm.dealview" }
+imaging-activity = { source = "packages/behaviors/activities.deal", view = "model/views/imaging-activity.dealview" }
 
 [build.targets]
 sysml-v2 = { format = "json", output = "build/sysml-v2/" }

@@ -1,0 +1,49 @@
+@header {
+    path:       model/traceability.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Traceability view — the co-located view for model/traceability.dealx (viewer
+ * P3 — traceability). Renders the directed needs -> requirements -> components
+ * chains as allocate/satisfy edges, with verification badges on each
+ * requirement driven by the live satisfy verdicts (5 PASS, 1 PARTIAL). Laid out
+ * left-to-right as a derivation tree; the trace edges use the theme `trace`
+ * color.
+ */
+view {
+    title: "HALCYON — Traceability";
+    viewpoint: traceability;
+    direction: left-to-right;
+    edge-labels: relationship;
+}
+
+include {
+    kind(need) within requirements.needs;
+    kind(requirement) within requirements.mission;
+    kind(requirement) within requirements.system;
+    model.HalcyonTraces.**;
+}
+
+requirement {
+    fill: surface;
+    stroke: trace;
+    verification-compartment: visible;
+}
+
+// Needs column, mission column, system column.
+[deal-id="requirements.needs.NEED_IMAGERY"]       { x: 40;  y: 60;  w: 200; h: 70; }
+[deal-id="requirements.mission.REQ_MIS_001"]      { x: 340; y: 60;  w: 200; h: 70; }
+[deal-id="requirements.system.REQ_SYS_001"]       { x: 640; y: 40;  w: 220; h: 90; }
+[deal-id="requirements.system.REQ_SYS_002"]       { x: 640; y: 160; w: 220; h: 90; }
+
+// The satisfy edge carrying the (partial) pointing verdict — slid label.
+[deal-connect="REQ_SYS_002 -> Halcyon.ADCS.adcs"] {
+    stroke: trace;
+    label-at: 0.5;
+}

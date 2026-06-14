@@ -1,0 +1,48 @@
+@header {
+    path:       model/views/icd.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Interface Control Diagram — every interface connection with its `via`
+ * (harness) and `carrying` (flow) labels shown inline (RG-10.10). Exercises
+ * inline keyword labels with manual slide on both horizontal and vertical
+ * segments (RG-10.11) — the only user-adjustable connector geometry, persisted
+ * to the tool-managed block.
+ */
+view {
+    title: "HALCYON — Interface Control (ICD)";
+    viewpoint: interface;
+    direction: left-to-right;
+    edge-labels: via carrying;
+    dangling-edges: stub;
+}
+
+include {
+    model.Halcyon.EnergyStorage;
+    model.Halcyon.ADCS;
+    model.Halcyon.Comms;
+    model.Halcyon.Payload;
+    model.Halcyon.Thermal;
+    kind(connection_def) within interfaces.harnesses;
+    kind(flow_def) within interfaces;
+}
+
+[deal-id="model.Halcyon.EnergyStorage"] { x: 40;  y: 60;  w: 280; h: 200; }
+[deal-id="model.Halcyon.ADCS"]          { x: 40;  y: 320; w: 280; h: 160; }
+[deal-id="model.Halcyon.Payload"]       { x: 520; y: 60;  w: 280; h: 200; }
+[deal-id="model.Halcyon.Comms"]         { x: 520; y: 320; w: 280; h: 160; }
+
+// Inline labels slid along the segments for legibility (labelAt 0..1).
+[deal-connect="EnergyStorage.railPayload -> Payload"] {
+    waypoints: (320, 140) (520, 140);
+    label-at: 0.4;
+}
+[deal-connect="Payload.productOut -> CDH"] {
+    label-at: 0.6;
+}

@@ -1,26 +1,71 @@
 @header {
     path:       model/global.dealview
     schema:     dealview/0.1
-    created:    2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
-    modified:   2026-06-12T00:00:00Z by "David Dunnock" via claude:cowork
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
     hash:       sha256:pending
     status:     draft
     marking:    Unclassified
 }
 
-/**
- * HALCYON — workspace theme stub (GV-9 theme layer).
- *
- * Type-level defaults only; NO positions (geometry is view state and
- * lives in per-view files). Populated properly in Phase 8 with semantic
- * color tokens for power / data / rf / thermal domains.
- *
- * Views are model-silent (GV-13): nothing here normalizes to KerML, and
- * deleting any .dealview must never affect `deal build`.
+/*
+ * HALCYON — workspace theme (GV-9 theme layer). Type-level defaults applied to
+ * every view; per-view files override with instance geometry. NO positions here
+ * (geometry is view state, lives in per-view files). Views are model-silent
+ * (GV-13): nothing here normalizes to KerML, and deleting any .dealview must
+ * never affect `deal build`.
  */
 
-// ─── Semantic color tokens (Phase 8) ────────────────────────────
-// power:   accent
-// data:    base
-// rf:      accent
-// thermal: muted
+// ─── Semantic color tokens ──────────────────────────────────────────────────
+// surface/emphasis alias the built-in theme slots (resolve against the editor
+// theme); domain colors are workspace literals with light()/dark() variants.
+tokens {
+    surface:    base;
+    emphasis:   accent;
+
+    power:      light(#B45309) dark(#F59E0B);   // EPS rails / battery bus
+    data:       light(#475569) dark(#94A3B8);   // CAN / SpaceWire
+    rf:         light(#7C3AED) dark(#C4B5FD);   // UHF / X-band
+    thermal:    light(#0E7490) dark(#22D3EE);   // straps / heaters / radiator
+    trace:      light(#15803D) dark(#4ADE80);   // allocate / satisfy links
+}
+
+// ─── Node type rules ────────────────────────────────────────────────────────
+system {
+    fill: surface;
+    stroke: emphasis;
+    stroke-width: 2;
+    corner-radius: 10;
+    min-w: 280;
+    min-h: 160;
+    title-compartment: visible;
+}
+
+part {
+    fill: surface;
+    stroke: emphasis;
+    stroke-width: 1;
+    corner-radius: 6;
+    min-w: 160;
+    min-h: 56;
+    attributes-compartment: collapsed;
+}
+
+requirement {
+    fill: surface;
+    stroke: trace;
+    stroke-width: 1;
+    corner-radius: 4;
+}
+
+port {
+    shape: square;
+    size: 10;
+    stroke: data;
+}
+
+// ─── Connector rules keyed by carried flow/type (attribute-refined) ─────────
+connect[carrying="PowerFlow"]      { stroke: power;   stroke-width: 2.5; }
+connect[carrying="TelemetryFrames"] { stroke: data;    line-style: dashed; }
+connect[carrying="ImageData"]      { stroke: data;    stroke-width: 2; }
+connect[carrying="CommandPackets"] { stroke: data;    line-style: dotted; }

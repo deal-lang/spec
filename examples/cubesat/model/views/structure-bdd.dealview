@@ -1,0 +1,56 @@
+@header {
+    path:       model/views/structure-bdd.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Block Definition Diagram — the spacecraft part definitions and their
+ * definition-level relationships. Exercises six of the ten connector kinds
+ * (RG-10.1): subclassification (ReactionWheel :> AttitudeActuator), compositeOf
+ * (ADCSSuite ◆ wheels), definedBy (usage : def), memberOf (package), redefines
+ * (Rail3V3 voltage), references (OnboardComputer ref MassMemory). BatteryPack
+ * shows all five compartments + all three badge slots (RG-9.2/9.3).
+ */
+view {
+    title: "HALCYON — Block Definitions (BDD)";
+    viewpoint: definition;
+    direction: top-to-bottom;
+    layout: tree;
+}
+
+include {
+    kind(part) within spacecraft;
+    spacecraft.**;
+}
+
+exclude {
+    spacecraft.structure.DeploymentSwitch;
+}
+
+// BatteryPack is the dense element: expand every compartment so the viewer
+// renders the full ElementBox anatomy and all three badge slots.
+[deal-id="spacecraft.eps.BatteryPack"] {
+    x: 480; y: 60; w: 240; h: 320;
+    attributes-compartment: visible;
+    title-compartment: visible;
+}
+
+// Abstract bases drawn square-cornered; the «abstract» semantic badge shows.
+[deal-id="spacecraft.adcs.AttitudeActuator"] {
+    x: 80; y: 60; w: 200; h: 120;
+    corner-radius: 0;
+}
+[deal-id="spacecraft.comms.Antenna"] {
+    x: 80; y: 240; w: 200; h: 100;
+    corner-radius: 0;
+}
+
+// Specialization edges fan into the abstract base — bundle them (RG-10.9).
+[deal-connect="spacecraft.adcs.ReactionWheel -> spacecraft.adcs.AttitudeActuator"] {
+    routing: orthogonal;
+}

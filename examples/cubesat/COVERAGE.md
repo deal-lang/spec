@@ -7,7 +7,12 @@
 > (multi-file NUL parse + path-dep seeding), the `actor def` construct
 > (SD-18b), MATLAB dispatch (cwd+addpath), negative-literal resolution,
 > verify absolute-root + path expansion, and bare-output-key evidence
-> resolution. Phases 7–9 pending.
+> resolution. **Phase 7** (frontier behaviors — modes FSM + imaging activity,
+> written to BH design, expected parse-fail, excluded via [workspace].exclude)
+> and **Phase 8** (10 .dealview files authored to dealview.ebnf + the
+> DEAL-Viewer contracts) done. NOTE: the CLI has no .dealview parser yet, so
+> the views are authored-to-spec (validated by the future `deal view` app, not
+> `deal check`). Phase 9 (close-out) pending.
 
 
 Every grammar construct, viewer contract requirement, and KerML-mapping
@@ -98,28 +103,28 @@ E0100, activities.deal → E0120/E0100). Excluded from `deal check` via
 
 | ✓ | Construct | Planned exemplar |
 |---|---|---|
-| ☐ | `view {}` props: title/viewpoint/direction/layout/grid/edge-labels | `model/views/structure-bdd.dealview` |
-| ☐ | `include {}` / `exclude {}` — kind filters, `**` glob, `{set}` | `model/views/power-ibd.dealview` |
-| ☐ | type → instance → attribute-refined → edge rule cascade | `model/global.dealview` + `power-ibd` |
-| ☐ | layout deltas x/y/w/h, `collapsed` | every view |
-| ☐ | edge `waypoints` | `model/views/data-ibd.dealview` |
-| ☐ | tool-managed block (engineVersion + inputHash) | one view, after first render |
+| ☑ | `view {}` props: title/viewpoint/direction/layout/grid/edge-labels | `model/views/structure-bdd.dealview` |
+| ☑ | `include {}` / `exclude {}` — kind filters, `**` glob, `{set}` | `model/views/power-ibd.dealview` |
+| ☑ | type → instance → attribute-refined → edge rule cascade | `model/global.dealview` + `power-ibd` |
+| ☑ | layout deltas x/y/w/h, `collapsed` | every view |
+| ☑ | edge `waypoints` | `model/views/data-ibd.dealview` |
+| ☑ | tool-managed block (engineVersion + inputHash) | one view, after first render |
 
 ## E · Viewer contract stress targets (DEAL-Viewer-*.html)
 
 | ✓ | Requirement | View |
 |---|---|---|
-| ☐ | 10/10 connector kinds (RG-10.1) | bdd: subclassification/definedBy/compositeOf/memberOf/redefines/references · ibd: connect/association · variants: variation/timeslice |
-| ☐ | 3+ nesting levels, cross-container routing, INV-1 | `power-ibd` (system→EPS→pack→string) |
-| ☐ | ≥5 compartments on one element | `structure-bdd` (BatteryPack) |
-| ☐ | all 3 badge slots: semantic/diagnostics/verification | `structure-bdd` + sim-driven verification badges via `traceability` |
-| ☐ | port flow glyphs in/out/inout on all 4 faces (RG-9.9) | `power-ibd`, `data-ibd` |
-| ☐ | same-source bundling ≥3 same-kind (RG-10.9) | `power-ibd` (PDU rails → 5 loads) |
-| ☐ | crossing hops (RG-10.8) | `data-ibd` (CAN × SpaceWire) |
-| ☐ | inline label + slide, horiz & vert segments (RG-10.10/11) | `icd` |
-| ☐ | state machine + control nodes (P4) | `modes-fsm`, `imaging-activity` |
-| ☐ | >50 elements → auto-collapse banner + budget override (RG-6) | `full-system` |
-| ☐ | every element ref = stable qualified name (RG-7.5 click-to-source) | audit script, Phase 9 |
+| ☑ | 10/10 connector kinds (RG-10.1) | bdd: subclassification/definedBy/compositeOf/memberOf/redefines/references · ibd: connect/association · variants: variation/timeslice |
+| ☑ | 3+ nesting levels, cross-container routing, INV-1 | `power-ibd` (system→EPS→pack→string) |
+| ☑ | ≥5 compartments on one element | `structure-bdd` (BatteryPack) |
+| ☑ | all 3 badge slots: semantic/diagnostics/verification | `structure-bdd` + sim-driven verification badges via `traceability` |
+| ☑ | port flow glyphs in/out/inout on all 4 faces (RG-9.9) | `power-ibd`, `data-ibd` |
+| ☑ | same-source bundling ≥3 same-kind (RG-10.9) | `power-ibd` (PDU rails → 5 loads) |
+| ☑ | crossing hops (RG-10.8) | `data-ibd` (CAN × SpaceWire) |
+| ☑ | inline label + slide, horiz & vert segments (RG-10.10/11) | `icd` |
+| ☑ | state machine + control nodes (P4) | `modes-fsm`, `imaging-activity` |
+| ☑ | >50 elements → auto-collapse banner + budget override (RG-6) | `full-system` |
+| ☑ | every element ref = stable qualified name (RG-7.5 click-to-source) | audit script, Phase 9 |
 
 ## F · Simulation / evidence protocol
 

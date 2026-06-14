@@ -1,0 +1,68 @@
+@header {
+    path:       model/halcyon.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * HALCYON system structure — the co-located view for model/halcyon.dealx.
+ * Shows the seven subsystems within the Halcyon system frame with
+ * hand-authored layout deltas and a waypointed cross-subsystem power run.
+ */
+view {
+    title: "HALCYON — System Structure";
+    viewpoint: structure;
+    direction: left-to-right;
+    grid: 20;
+}
+
+include {
+    model.Halcyon.**;
+}
+
+// Subsystem placement within the system frame (parent-relative px).
+[deal-id="model.Halcyon"] {
+    x: 40; y: 40; w: 1320; h: 820;
+}
+[deal-id="model.Halcyon.EnergyStorage"] {
+    x: 60; y: 80; w: 360; h: 320;
+}
+[deal-id="model.Halcyon.ADCS"] {
+    x: 60; y: 440; w: 300; h: 200;
+    attributes-compartment: collapsed;
+}
+[deal-id="model.Halcyon.Comms"] {
+    x: 480; y: 80; w: 300; h: 240;
+}
+[deal-id="model.Halcyon.CDH"] {
+    x: 480; y: 380; w: 300; h: 160;
+    collapsed: true;
+}
+[deal-id="model.Halcyon.Payload"] {
+    x: 860; y: 80; w: 360; h: 280;
+}
+[deal-id="model.Halcyon.Thermal"] {
+    x: 860; y: 420; w: 360; h: 200;
+}
+[deal-id="model.Halcyon.Structure"] {
+    x: 480; y: 600; w: 360; h: 200;
+    collapsed: true;
+}
+
+// System-level power run, orthogonally routed around the CDH block.
+[deal-connect="EnergyStorage.railADCS -> ADCS.powerIn"] {
+    waypoints: (60, 360) (40, 360) (40, 520) (60, 520);
+}
+[deal-connect="EnergyStorage.railPayload -> Payload"] {
+    stroke: power;
+    waypoints: (420, 200) (860, 200);
+}
+
+// Tool-managed block (RG-8.2): the viewer stamps resolved layout + collapse
+// state here on render, keyed by engine version + input hash. Hand-authored
+// deltas above take precedence; this block is regenerated, never hand-edited.
+// @tool-managed { engineVersion: ""; inputHash: ""; }

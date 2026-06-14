@@ -1,0 +1,39 @@
+@header {
+    path:       model/views/modes-fsm.dealview
+    schema:     dealview/0.1
+    created:    2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-14T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+
+/*
+ * Mission-mode state machine view (viewer P4 — behavior/flow). Renders the
+ * MissionModes state machine: states as rounded boxes with entry/do/exit
+ * compartments, transitions as labeled edges (trigger [guard] / effect), and
+ * the start node. Source is the FRONTIER packages/behaviors/modes.deal, so
+ * these deal-ids resolve only once the BH state-machine grammar lands — until
+ * then the viewer shows them as unresolved (dangling-edges: stub).
+ */
+view {
+    title: "HALCYON — Mission Modes (FSM)";
+    viewpoint: state;
+    direction: left-to-right;
+    dangling-edges: stub;
+}
+
+include {
+    behaviors.modes.MissionModes.**;
+}
+
+[deal-id="behaviors.modes.MissionModes.Detumble"] { x: 40;  y: 200; w: 160; h: 90; }
+[deal-id="behaviors.modes.MissionModes.Safe"]     { x: 280; y: 200; w: 160; h: 110; }
+[deal-id="behaviors.modes.MissionModes.Nominal"]  { x: 520; y: 200; w: 160; h: 90; }
+[deal-id="behaviors.modes.MissionModes.Imaging"]  { x: 760; y: 80;  w: 180; h: 130; }
+[deal-id="behaviors.modes.MissionModes.Downlink"] { x: 760; y: 320; w: 180; h: 110; }
+
+// Fault transitions converge on Safe from every operational state — bundled.
+[deal-connect="Nominal -> Safe"]   { waypoints: (520, 280) (440, 280); }
+[deal-connect="Imaging -> Safe"]   { waypoints: (760, 200) (440, 200); }
+[deal-connect="Downlink -> Safe"]  { waypoints: (760, 380) (440, 380) (440, 300); }
