@@ -83,9 +83,16 @@ part def XBandTransmitter {
         port rfPort : XBandPort [1];
         in port dataIn : SpaceWirePort [1];
         in port powerIn : Rail12V [1];
-        attribute dcPower : Power [1] = W(30);
+        attribute dcPower : Power [1] = W(12);
         attribute mass : Mass [1] = kg(0.35);
-        // Effective downlink antenna gain, used by the link_budget sim binding.
+        // Link-budget rollup parameters bound by the link_budget sim. Held on
+        // the transmitter (not read from rfPort : XBandPort) so the model-value
+        // resolver disambiguates them from the UHF transceiver's same-named
+        // port attributes — the deep path xtx.rfPort.txPower otherwise collides
+        // with UHFTransceiver.rfPort.txPower in suffix resolution.
+        attribute downlinkPower_W : Real [1] = 8.0;
+        attribute downlinkFreq_GHz : Real [1] = 8.2;
+        attribute symbolRate_sps : Real [1] = 25000000.0;
         attribute antennaGain_dBi : Real [1] = 6.0;
     )
 }

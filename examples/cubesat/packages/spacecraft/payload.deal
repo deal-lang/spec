@@ -47,9 +47,10 @@ part def MultispectralImager <<specializes>> ThermallyManaged {
         attribute pixelPitch_um : Real [1] = 5.5;
         attribute bands : Integer [1] = 4;
         attribute bandCenters_nm : Real [4..8];
-        // As-built ground sample distance at 550 km from the optical design;
-        // verified against REQ_SYS_001 via analysis evidence.
-        attribute groundSampleDistance_m : Real [1] = 21.0;
+        // As-built ground sample distance: pixelPitch * altitude / focalLength
+        // = 5.5 um * 550 km / 580 mm = 5.2 m (consistent with the
+        // GroundSampleDistance calc). Verified against REQ_SYS_001 (<= 22 m).
+        attribute groundSampleDistance_m : Real [1] = 5.2;
         attribute imagingPower : Power [1] = W(12);
         attribute mass : Mass [1] = kg(1.8);
         out port imageOut : SpaceWirePort [1];

@@ -31,14 +31,16 @@ port def UHFPort {
 }
 
 /**
- * X-band payload downlink port. EIRP is the link-budget input consumed by
- * simulations/comms/link_budget.py via the satisfy evidence chain.
+ * X-band payload downlink port — the RF interface properties of the band.
+ * The link-budget sim binds to transmitter-level rollups on XBandTransmitter
+ * (downlinkPower_W / downlinkFreq_GHz / symbolRate_sps / antennaGain_dBi), not
+ * to these port attributes, to keep model-value resolution unambiguous against
+ * the UHF port's same-named attributes.
  */
 port def XBandPort {
     public (
         attribute centerFrequency : Frequency [1] = GHz(8.2);
         attribute txPower : Power [1] = W(8.0);
-        attribute eirp_dBW : Real [1];
         attribute symbolRate : Integer [1] = 25000000;
         attribute modulation : String [1] = "OQPSK";
     )

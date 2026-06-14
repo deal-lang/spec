@@ -79,10 +79,10 @@ binds_to = "packages/spacecraft/comms.deal::XBandTransmitter"
 annotation = "@simulation:<<computes>> linkBudget"
 reproducibility = "strict"
 inputs = [
-    { model_path = "Comms.comms.xtx.rfPort.txPower", param = "txPower_W", unit = "W" },
+    { model_path = "Comms.comms.xtx.downlinkPower_W", param = "txPower_W", unit = "W" },
     { model_path = "Comms.comms.xtx.antennaGain_dBi", param = "antennaGain_dBi", unit = "dBi" },
-    { model_path = "Comms.comms.xtx.rfPort.centerFrequency", param = "frequency_GHz", unit = "GHz" },
-    { model_path = "Comms.comms.xtx.rfPort.symbolRate", param = "symbolRate_sps", unit = "Hz" },
+    { model_path = "Comms.comms.xtx.downlinkFreq_GHz", param = "frequency_GHz", unit = "GHz" },
+    { model_path = "Comms.comms.xtx.symbolRate_sps", param = "symbolRate_sps", unit = "Hz" },
 ]
 outputs = [
     { param = "ebno_dB", unit = "dB" },

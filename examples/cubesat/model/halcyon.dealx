@@ -9,7 +9,7 @@
 }
 package model;
 
-import deal.std.units.{V, A, W, Wh, kg, mm, MHz, GHz, Hz, deg, rpm, percent};
+import deal.std.units.{V, A, W, Wh, kg, mm, m2, MHz, GHz, Hz, deg, rpm, percent};
 import spacecraft.*;
 import interfaces.*;
 
@@ -64,7 +64,7 @@ import interfaces.*;
 
         [<subsystem Thermal>]
                 [<HeaterCircuit as="heaters" zones=2 />]
-                [<RadiatorPanel as="radiator" area={mm(0)} emissivity=0.91 />]
+                [<RadiatorPanel as="radiator" area={m2(0.02)} emissivity=0.91 />]
                 [<ThermistorNet as="thermistors" channelCount=12 />]
     [</subsystem>]
 

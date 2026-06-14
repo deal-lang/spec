@@ -13,9 +13,9 @@ import deal.std.units.{W, mm};
 import spacecraft.*;
 
 /*
- * Baseline 4-band multispectral configuration (the flight build). A variant
- * is a partial composition: only the parts whose attributes differ from the
- * base definition are restated.
+ * Baseline 4-band multispectral configuration — the reference flight build.
+ * This variant pins the baseline imager point explicitly (it matches the base
+ * Halcyon definition); the hyperspectral variant is the one that diverges.
  *
  * KerML mapping: variants map to SysML variation/variant membership; DEAL's
  * variation model replaces KerML set-algebra typing (gap doc §3.2). The

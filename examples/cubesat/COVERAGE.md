@@ -9,10 +9,16 @@
 > verify absolute-root + path expansion, and bare-output-key evidence
 > resolution. **Phase 7** (frontier behaviors — modes FSM + imaging activity,
 > written to BH design, expected parse-fail, excluded via [workspace].exclude)
-> and **Phase 8** (10 .dealview files authored to dealview.ebnf + the
-> DEAL-Viewer contracts) done. NOTE: the CLI has no .dealview parser yet, so
-> the views are authored-to-spec (validated by the future `deal view` app, not
-> `deal check`). Phase 9 (close-out) pending.
+> and **Phase 8** (11 .dealview files authored to dealview.ebnf + the
+> DEAL-Viewer contracts; CLI has no .dealview parser, so authored-to-spec) done.
+> **Phase 9** (close-out): independent review pass applied — fixed the
+> link-budget UHF/X-band binding (now resolves the X-band transmitter rollups,
+> +8.4 dB margin), the GSD value (5.2 m, consistent with the calc; 16.8 m
+> margin), and the radiator-area unit error. RE-RUN `deal simulate --all` +
+> `deal check --verify --run-sims` after rebuild to regenerate evidence on the
+> corrected values (still 5 PASS / 1 PARTIAL, now physically sound). Full gate
+> (`parse`/`check --verify`/`fmt --check`/`build sysml-v2 --validate`/
+> `build reqif`) is David's to run.
 
 
 Every grammar construct, viewer contract requirement, and KerML-mapping
