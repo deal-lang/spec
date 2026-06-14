@@ -10,6 +10,8 @@
 package use_cases.downlink;
 
 import deal.std.units.{deg, s};
+import use_cases.actors.{GroundSegment};
+import spacecraft.system.{Halcyon};
 
 /**
  * Downlink stored imagery to a ground station during an X-band pass.

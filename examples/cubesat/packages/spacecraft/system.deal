@@ -1,0 +1,51 @@
+@header {
+    path:       packages/spacecraft/system.deal
+    schema:     deal/0.1
+    created:    2026-06-13T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-13T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package spacecraft.system;
+
+import deal.std.units.{kg};
+import spacecraft.structure.{BusFrame6U};
+import spacecraft.eps.{BatteryPack, SolarArray, PowerDistributionUnit};
+import spacecraft.adcs.{ADCSSuite};
+import spacecraft.comms.{CommsSuite};
+import spacecraft.obc.{CDHSuite};
+import spacecraft.payload.{MultispectralImager};
+import spacecraft.thermal.{RadiatorPanel, HeaterCircuit};
+
+/**
+ * HALCYON — the system of interest.
+ *
+ * This `part def` is the use-case subject and the viewer's BDD root; the
+ * composition in model/halcyon.dealx instantiates it as the top-level
+ * `[<system Halcyon>]`. Its parts are the major flight assemblies.
+ *
+ * KerML mapping: a system-of-interest `part def` is the same M1 mapping as
+ * any other part definition — KerML Structure / SysML PartDefinition
+ * (8.3.4.3.2); each contained `part` becomes a Feature carried by a
+ * synthesized FeatureMembership (M2, 8.3.3.1.6).
+ *
+ * @see ImagingPass — primary operational use case (subject)
+ * @see REQ_SYS_007 — flight-system mass envelope
+ */
+part def Halcyon {
+    @rationale: "6U EO smallsat; single-string avionics with 2-string battery redundancy"
+    public (
+        part structure : BusFrame6U [1];
+        part battery : BatteryPack [1];
+        part arrays : SolarArray [2];
+        part pdu : PowerDistributionUnit [1];
+        part adcs : ADCSSuite [1];
+        part comms : CommsSuite [1];
+        part cdh : CDHSuite [1];
+        part payload : MultispectralImager [1];
+        part radiator : RadiatorPanel [1];
+        part heaters : HeaterCircuit [1];
+        attribute dryMass : Mass [1] = kg(11.2);
+    )
+}

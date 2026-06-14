@@ -10,6 +10,8 @@
 package use_cases.safemode;
 
 import deal.std.units.{deg};
+import use_cases.actors.{Operator, FaultMonitor};
+import spacecraft.system.{Halcyon};
 
 /**
  * Autonomous safe-mode entry on fault detection. The operational twin of

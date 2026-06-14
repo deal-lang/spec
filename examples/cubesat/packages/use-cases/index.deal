@@ -15,6 +15,7 @@
  */
 package use_cases;
 
+export actors.{Operator, GroundSegment, FaultMonitor};
 export imaging.{ImagingPass, TargetCollection};
 export downlink.{DownlinkPass, StoreAndForward};
 export safemode.{SafeModeEntry, SafeModeRecovery};

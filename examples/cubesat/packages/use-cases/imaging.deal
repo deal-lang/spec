@@ -10,6 +10,8 @@
 package use_cases.imaging;
 
 import deal.std.units.{km, deg, s};
+import use_cases.actors.{Operator};
+import spacecraft.system.{Halcyon};
 
 /**
  * Collect imagery of a designated target during a daylight pass.

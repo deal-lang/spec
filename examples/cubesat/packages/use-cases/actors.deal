@@ -1,0 +1,53 @@
+@header {
+    path:       packages/use-cases/actors.deal
+    schema:     deal/0.1
+    created:    2026-06-13T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-13T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package use_cases.actors;
+
+/*
+ * External actors for the HALCYON use cases.
+ *
+ * `actor def` is a top-level definition for an external participant — the
+ * thing on the far side of a use-case boundary (an operator, a ground
+ * station, an autonomous monitor). It parses exactly like `part def`
+ * (KEYWORD "def" IDENT Body) and registers a type that `actor x : T`
+ * usages resolve against.
+ *
+ * KerML mapping: KerML has no dedicated ActorDefinition metaclass — in
+ * SysML v2 an actor is a part marked «actor». So `actor def` normalizes
+ * (M1) to a KerML Structure / SysML PartDefinition (8.3.4.3.2) carrying an
+ * «actor» MetadataFeature (8.3.4.12.3). Structure specializes Item in the
+ * KerML hierarchy, so the «actor» marker rides on the item/part family
+ * exactly as SysML v2 examples show. The `actor x : Operator` usages in the
+ * use cases lower to PartUsage / KerML Feature (M1, 8.3.3.3.4) — the
+ * load-bearing Feature mapping for every usage.
+ */
+
+/** A human operator: mission planner, ground controller. */
+actor def Operator {
+    public (
+        attribute role : String [1];
+        attribute organization : String [1] = "HALCYON Mission Ops";
+    )
+}
+
+/** A ground station / ground segment receiving downlinked products. */
+actor def GroundSegment {
+    public (
+        attribute stationId : String [1];
+        attribute bandSupport : String [1] = "X-band";
+    )
+}
+
+/** Autonomous onboard fault monitor (FDIR) that triggers safe mode. */
+actor def FaultMonitor {
+    public (
+        attribute scope : String [1] = "onboard FDIR";
+        attribute latching : Boolean [1] = true;
+    )
+}

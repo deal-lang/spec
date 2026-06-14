@@ -33,7 +33,8 @@ exists in the named file AND (core) passes `deal check`.
 | ☐ | `need def` / `requirement def` | `requirements/needs.deal`, `requirements/system.deal` | RequirementDefinition (M1 · impl) |
 | ☐ | `verification {}` accepts/rejects/threshold/conditions | `requirements/system.deal` | contract carried, not emitted (SD-20 · designed) |
 | ☐ | all 4 verification methods | `requirements/system.deal` | — |
-| ☐ | `use case def` + actor/subject | `use-cases/imaging.deal` | UseCaseDefinition (M1 · impl-generic) |
+| ☑ | `use case def` + actor/subject | `use-cases/imaging.deal` | UseCaseDefinition (M1 · impl-generic) |
+| ☑ | `actor def` (NEW construct) + `part def` subject | `use-cases/actors.deal`; subject `spacecraft/system.deal` (Halcyon) | PartDefinition + «actor» metadata (M1 · impl as PartDefinition; SD-18b). KerML has no ActorDefinition — actor is a part marked «actor». Grammar/parser/sema/emitter added this session; verified via Zig lib test. |
 | ☐ | `calc def` + params | `analysis/calcs.deal` (OrbitAvgPower) | **Function** (M1 · impl; ParameterMembership M2, ordered per D-12) |
 | ☐ | return contract `=> ±` / `=> sig N` / predicate ref | `analysis/calcs.deal` | no KerML equiv — carried as metadata on Function (D-08 "carried not enforced") |
 | ☐ | `constraint def` + `require` | `analysis/constraints.deal` (SafeDoD) | **Predicate** (M1 · impl); require → Invariant (designed) |

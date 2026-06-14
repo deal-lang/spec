@@ -545,6 +545,7 @@ _ElementDefinition ::=
     | CalcDefinition
     | NeedDefinition
     | UseCaseDefinition
+    | ActorDefinition
 
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1031,6 +1032,34 @@ RequirementDefinition ::=
  */
 UseCaseDefinition ::=
     "use" "case" "def" IDENT DefinitionBody
+
+/**
+ * Actor definition — an external participant type for use cases (the entity
+ * on the far side of a use-case boundary: an operator, ground segment, or
+ * autonomous monitor). Parses like any element definition; registers a type
+ * that `actor x : T` usages (inside use-case bodies) resolve against.
+ *
+ * Design decisions: SD-18b
+ * Layer: L2
+ * Marker: [ext]
+ * FIRST tokens: "actor" "def"
+ * Normalization: ActorDefinition AST node (ElementDef payload)
+ *
+ * KerML mapping: no dedicated ActorDefinition metaclass exists; an actor is
+ * a SysML PartDefinition (KerML Structure, 8.3.4.3.2) marked «actor» via a
+ * MetadataFeature (8.3.4.12.3). Emitted as PartDefinition; the «actor»
+ * marker rides the deferred metadata layer.
+ *
+ * Showcase example:
+ *   examples/cubesat/packages/use-cases/actors.deal — actor def Operator { ... }
+ *
+ * Ambiguity notes:
+ *   At top level, "actor" is followed by "def" (definition). Inside a
+ *   definition body, "actor" followed by IDENT is an ActorUsage. The two
+ *   are disambiguated by the token after "actor".
+ */
+ActorDefinition ::=
+    "actor" "def" IDENT StructuralRelationship? DefinitionBody
 
 
 // ─────────────────────────────────────────────────────────────────────────

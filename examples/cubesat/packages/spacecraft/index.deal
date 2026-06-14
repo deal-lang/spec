@@ -30,3 +30,4 @@ export comms.{Antenna, AntennaUHF, AntennaXBand, UHFTransceiver, XBandTransmitte
 export obc.{MassMemory, OnboardComputer, CDHSuite};
 export payload.{ImageProduct, MultispectralImager, PayloadDataHandler};
 export thermal.{HeaterCircuit, RadiatorPanel, ThermistorNet};
+export system.{Halcyon};
