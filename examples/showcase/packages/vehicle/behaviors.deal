@@ -57,7 +57,7 @@ action def FastCharge {
     @flow:<<flows to>> constantVoltage {
         from: constantCurrent;
     }
-    @flow:<<flows to>> terminate {
+    @flow:<<flows to>> terminateCharge {
         from: constantVoltage;
     }
     public (
@@ -69,7 +69,7 @@ action def FastCharge {
     action preCondition;
     action constantCurrent;
     action constantVoltage;
-    action terminate;
+    action terminateCharge;   // renamed from `terminate` — now a reserved keyword (S2.1)
 }
 
 /**
