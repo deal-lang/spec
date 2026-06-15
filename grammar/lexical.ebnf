@@ -490,6 +490,13 @@ _Keyword ::=
     | "AND" | "OR" | "NOT" | "WHERE"
     | "path" | "schema" | "created" | "modified" | "reviewed"
     | "hash" | "baseline" | "marking" | "by"
+    // Behavioral surface (BH-1..BH-7) — globally reserved.
+    // Admissible only inside ActionBody / StateBody, but reserved everywhere
+    // for a flat-reserved lexer (consistent with DEAL's existing keyword model).
+    | "decide" | "par" | "loop" | "while" | "until" | "for"
+    | "send" | "accept" | "assign" | "bind" | "node" | "succession"
+    | "on" | "entry" | "do" | "exit" | "else"
+    | "start" | "done" | "terminate"
 
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -706,10 +713,32 @@ ANNOTATION ::=
 //   elsewhere "+" , "/" , "-" lex as their individual arithmetic tokens.
 //   The literal "±" (U+00B1) is unambiguous and always lexes to PLUS_MINUS.
 
-// --- Path arrow (reserved) ---
-// THIN_ARROW       "->"    Connect shorthand, evidence maps
+// --- Path arrow ---
+// THIN_ARROW       "->"    Connect shorthand, evidence maps, AND control
+//                          succession (BH-2). Disjoint by mode: connect/maps
+//                          uses are in .dealx; succession uses are only inside
+//                          an ActionBody/StateBody. No intra-file ambiguity.
 //
 // Collision: "->" vs MINUS + GREATER_THAN — longest match picks THIN_ARROW
+
+// --- Item-flow arrow (BH-6) ---
+// ITEM_FLOW        "~>"    Object/data flow edge between feature references,
+//                          inside an ActionBody (BH-6). Lowers to a KerML
+//                          ItemFlow / FlowConnection usage.
+//
+// Collision: "~>" vs SYSML_CONJUGATES "~" + GREATER_THAN ">" — longest match
+//   picks ITEM_FLOW (2 chars) over the 1-char "~" conjugates alias. "~"
+//   followed by non-">" → SYSML_CONJUGATES; "~>" → ITEM_FLOW.
+
+// --- Assign delta (BH, assign-action) ---
+// ASSIGN           ":="    Assignment-action operator inside an ActionBody
+//                          ("assign x := e;"). Lowers to a KerML
+//                          AssignmentActionUsage.
+//
+// Collision: ":=" vs COLON ":" / SYSML_SPECIALIZES ":>" / SYSML_REDEFINES
+//   ":>>" / COLONCOLON "::" — longest match. ":" + "=" is the only 2-char
+//   sequence forming ASSIGN; ":>" and "::" are distinct sequences. ":"
+//   followed by non-("="|">"|":") → COLON.
 
 // --- At sign ---
 // AT               "@"     Annotation prefix
@@ -732,7 +761,7 @@ _Delimiters ::=
     | "=" | "=>"
     | ">" | "<" | ">=" | "<=" | "==" | "!="
     | "+" | "-" | "*" | "/"
-    | "->" | "±"
+    | "->" | "~>" | ":=" | "±"
 
 
 // ─────────────────────────────────────────────────────────────────────────

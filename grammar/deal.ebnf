@@ -949,8 +949,12 @@ ReturnStatement ::=
  *   packages/vehicle/behaviors.deal:L14 — action def Accelerate { ... }
  *   packages/vehicle/behaviors.deal:L32 — action def RegenerativeBrake { ... }
  */
+// BH-7: ActionDefinition takes a dedicated ActionBody (not the shared
+// DefinitionBody), so behavioral members (succession, control blocks, flows)
+// are admissible only where legal. See Section 9b. Normalizes to a KerML
+// Behavior / SysML ActionDefinition (8.3.17.3).
 ActionDefinition ::=
-    "action" "def" IDENT StructuralRelationship? DefinitionBody
+    "action" "def" IDENT StructuralRelationship? ActionBody
 
 /**
  * State definition — defines a state machine type.
@@ -964,8 +968,451 @@ ActionDefinition ::=
  * Showcase example:
  *   (no showcase example yet — production kept for completeness per SD-1)
  */
+// BH-7: StateDefinition takes a dedicated StateBody (not the shared
+// DefinitionBody), admitting transitions, entry/do/exit, and nested states.
+// See Section 9c. Normalizes to SysML StateDefinition (8.3.18.5).
 StateDefinition ::=
-    "state" "def" IDENT StructuralRelationship? DefinitionBody
+    "state" "def" IDENT StructuralRelationship? StateBody
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 9b: Action Bodies — Behavioral Surface (BH-1 .. BH-3, BH-6, BH-7)
+// Design decisions: BH-1, BH-2, BH-3, BH-6, BH-7
+// Layer: L2
+//
+// The behavioral surface is sugar over five KerML-faithful node/edge kinds:
+//   Step (KerML 8.3.4.6.3) · Succession (8.3.4.5.4) · ItemFlow/Flow (8.3.4.9) ·
+//   ControlNode (stdlib actions) · BindingConnector (8.3.4.5.2).
+// All productions below are admissible ONLY inside an ActionBody / StateBody.
+// BH-2: "->" succession is disjoint from .dealx connect by mode (no intra-file
+// ambiguity). BH-6: "~>" is the item-flow operator.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Action body — the brace-delimited content of an action def or action usage.
+ *
+ * Design decisions: BH-7
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: ActionBody AST node — ordered behavioral members over the IR
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal — action def Accelerate { ... }
+ */
+ActionBody ::=
+    "{" _ActionMember* "}"
+
+/**
+ * Action member — anything admissible inside an ActionBody.
+ *
+ * Design decisions: BH-1, BH-2, BH-3, BH-6, BH-7
+ * Layer: L2 | Marker: [ext]
+ * Normalization: transparent — dispatches to the specific member
+ *
+ * FIRST tokens per alternative (pairwise-disjoint leading token, except the
+ * two QualifiedName-led forms which are operator-discriminated, see below):
+ *   AnnotationStatement → "@"
+ *   VisibilityWrapper   → "public" | "protected" | "private"
+ *   PinDeclaration      → "in" | "out" | "inout"
+ *   ActionUsage         → "action"
+ *   DecideBlock         → "decide"
+ *   ParBlock            → "par"
+ *   LoopStatement       → "loop" | "for"
+ *   SendAction          → "send"
+ *   AcceptAction        → "accept"
+ *   AssignAction        → "assign"
+ *   BindingStatement    → "bind"
+ *   EscapeNode          → "node"
+ *   EscapeSuccession    → "succession"
+ *   SuccessionChain     → "start" | "done" | "terminate" | "decide" | "par" | QualifiedName
+ *   ItemFlowStatement   → QualifiedName
+ *
+ * Ambiguity notes (GA6):
+ *   1. SuccessionChain, ItemFlowStatement, and PerformStatement all begin with
+ *      a name. The leading name is parsed first; the NEXT token selects the
+ *      production: "(" → PerformStatement (a call), "->" → SuccessionChain,
+ *      "~>" → ItemFlowStatement (a "." continues the feature path before "~>").
+ *      Operator-driven LL(2), consistent with the expression grammar (§8 of the
+ *      behavior design doc). A bare name followed by none of these is an
+ *      error (E-beh-001).
+ *   2. A SuccessionChain may begin with a DecideBlock/ParBlock FlowRef. When
+ *      "decide"/"par" is seen, the block is parsed, then a trailing "->" means
+ *      the block was the head of a SuccessionChain; absence of "->" means it was
+ *      a standalone DecideBlock/ParBlock member. LL(2)-after-block.
+ */
+_ActionMember ::=
+    AnnotationStatement
+    | VisibilityWrapper
+    | PinDeclaration
+    | ActionUsage
+    | DecideBlock
+    | ParBlock
+    | LoopStatement
+    | SendAction
+    | AcceptAction
+    | AssignAction
+    | BindingStatement
+    | EscapeNode
+    | EscapeSuccession
+    | PerformStatement
+    | SuccessionChain
+    | ItemFlowStatement
+
+/**
+ * Pin declaration — a directed parameter (pin) of an action.
+ *
+ * Design decisions: BH-7, SD-8 (direction)
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "in" | "out" | "inout"
+ * Normalization: a directed KerML Feature (FeatureDirectionKind, 8.3.3.1.5);
+ *   the graphical pin SIDE is a .dealview hint (BH-8, deferred).
+ *
+ * Direction is required on a pin (unlike a calc ParameterDecl, where it
+ * defaults to "in"); this is what visually distinguishes a pin from an
+ * ordinary attribute usage in an action body.
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal — in soc : Percent;  out energyIn : Energy;
+ */
+PinDeclaration ::=
+    _DirectionPrefix IDENT TypeAnnotation Multiplicity? DefaultValue? ";"
+
+/**
+ * Succession chain — one or more control edges between flow references.
+ *
+ * Design decisions: BH-2
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "start" | "done" | "terminate" | "decide" | "par" | QualifiedName
+ * Normalization: a sequence of KerML Succession edges (8.3.4.5.4) between the
+ *   referenced Steps; "start"/"done"/"terminate" are stdlib control endpoints.
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal —
+ *     start -> requestTorque -> deliverPower -> controlTraction -> done;
+ */
+SuccessionChain ::=
+    FlowRef ( "->" Guard? FlowRef )+ ";"
+
+/**
+ * Flow reference — an endpoint of a succession edge.
+ *
+ * Design decisions: BH-2, BH-3
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "start" | "done" | "terminate" | "decide" | "par" | QualifiedName
+ * Normalization: transparent — resolves to a Step or a control node
+ */
+FlowRef ::=
+    "start"
+    | "done"
+    | "terminate"
+    | DecideBlock
+    | ParBlock
+    | QualifiedName
+
+/**
+ * Guard — a bracketed boolean condition (or the "else" default) on an edge.
+ *
+ * Design decisions: BH-2, BH-3
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "["
+ * Normalization: a guardExpression on the Succession; "else" is the default
+ *   outgoing branch of a DecisionNode.
+ *
+ * Ambiguity notes: a guard "[" appears only after "->" , at the head of a
+ *   DecideBranch, or after "accept NAME"; a Multiplicity "[" appears only after
+ *   a TypeAnnotation on a PinDeclaration. Positions are disjoint.
+ */
+Guard ::=
+    "[" ( Expression | "else" ) "]"
+
+/**
+ * Decide block — a decision node with guarded branches (BH-3).
+ *
+ * Design decisions: BH-3
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "decide"
+ * Normalization: a SysML DecisionNode (8.3.17.7) + an implicit MergeNode at the
+ *   block's single exit; each branch is a guarded outgoing Succession.
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal —
+ *     constantVoltage -> decide { [soc >= 80] -> done  [else] -> constantCurrent }
+ */
+DecideBlock ::=
+    "decide" "{" DecideBranch+ "}"
+
+DecideBranch ::=
+    Guard "->" FlowRef
+
+/**
+ * Par block — a fork/join over concurrent branches (BH-3).
+ *
+ * Design decisions: BH-3
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "par"
+ * Normalization: a SysML ForkNode (8.3.17.8) at the head + an implicit JoinNode
+ *   at the single exit; the optional trailing "-> FlowRef" is the succession out
+ *   of the join.
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal —
+ *     monitorTemps -> par { -> activateHeating  -> activateCooling } -> done;
+ */
+ParBlock ::=
+    "par" "{" ParBranch+ "}" ( "->" FlowRef )?
+
+ParBranch ::=
+    "->" FlowRef
+
+/**
+ * Loop statement — while/until loop or a for..in iteration (BH-3).
+ *
+ * Design decisions: BH-3
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "loop" | "for"
+ * Normalization: while/until → SysML LoopActionUsage; for..in →
+ *   ForLoopActionUsage; both desugar to a header DecisionNode + body region +
+ *   back-edge Succession (the canonical reducible loop, BH-5).
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal — loop while [soc < 100] { deliverPower -> measure; }
+ *   packages/vehicle/behaviors.deal — for cell in cells { balance(cell); }
+ *
+ * Ambiguity notes: after "loop", "while"|"until" selects the guarded form;
+ *   "for" selects the iteration form. Both bodies reuse ActionBody.
+ */
+LoopStatement ::=
+    "loop" ( "while" | "until" ) Guard ActionBody
+    | "for" IDENT "in" Expression ActionBody
+
+/**
+ * Send / accept / assign actions (BH, message + assignment actions).
+ *
+ * Design decisions: BH-1
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "send" | "accept" | "assign"
+ * Normalization:
+ *   send   → SysML SendActionUsage (8.3.17.15) — payload + optional receiver
+ *   accept → SysML AcceptActionUsage (8.3.17.2) — trigger + optional guard
+ *   assign → SysML AssignmentActionUsage (8.3.17.5) — referent ":=" valueExpr
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal —
+ *     send Overheat to controller;   accept PlugInserted;   assign target := soc + 10;
+ */
+SendAction ::=
+    "send" QualifiedName ( "to" QualifiedName )? ";"
+
+AcceptAction ::=
+    "accept" QualifiedName ( "[" Expression "]" )? ";"
+
+AssignAction ::=
+    "assign" QualifiedName ":=" Expression ";"
+
+/**
+ * Perform statement — a bare call that performs an action or invokes a calc.
+ *
+ * Design decisions: BH-1 (covers the design's `for cell in cells { balance(cell); }`)
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: IDENT (discriminated from SuccessionChain/ItemFlowStatement by
+ *   a "(" immediately after the name)
+ * Normalization: a SysML PerformActionUsage (8.3.17.14) / KerML InvocationExpression.
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal — balance(zone);
+ */
+PerformStatement ::=
+    FunctionCallExpression ";"
+
+/**
+ * Item-flow statement — an object/data flow edge between feature refs (BH-6).
+ *
+ * Design decisions: BH-6
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: QualifiedName (discriminated from SuccessionChain by "~>")
+ * Normalization: a KerML ItemFlow / FlowConnection usage (8.3.4.9); the
+ *   optional ": Type" types it by a flow def (CS-5). flow def is unchanged.
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal — deliverPower.delivered ~> measure.sample;
+ *   packages/vehicle/behaviors.deal — deliverPower.delivered ~> measure.sample : Energy;
+ */
+ItemFlowStatement ::=
+    FeatureRef "~>" FeatureRef ( ":" QualifiedName )? ";"
+
+/**
+ * Binding statement — value-equality between two features (BH-6).
+ *
+ * Design decisions: BH-6
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "bind"
+ * Normalization: a KerML BindingConnector (8.3.4.5.2).
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal — bind measure.sample = deliverPower.delivered;
+ */
+BindingStatement ::=
+    "bind" FeatureRef "=" FeatureRef ";"
+
+/**
+ * Feature reference — a dotted path to a feature (pin / attribute).
+ * QualifiedName already admits dotted paths; this alias names the role.
+ *
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: transparent — a feature path
+ */
+FeatureRef ::=
+    QualifiedName
+
+/**
+ * Escape-hatch node and succession — explicit-graph register (BH-1).
+ * For arbitrary cyclic graphs the structured forms cannot nest.
+ *
+ * Design decisions: BH-1
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "node" (EscapeNode) | "succession" (EscapeSuccession)
+ * Normalization: EscapeNode → a named Step typed by an action; EscapeSuccession
+ *   → a standalone Succession edge (optionally guarded). Same IR as the
+ *   structured forms — total graphical-notation coverage (BH-5).
+ *
+ * Showcase example:
+ *   packages/vehicle/behaviors.deal —
+ *     node a : authenticate;  succession a -> b [retry];
+ */
+EscapeNode ::=
+    "node" IDENT ":" QualifiedName ActionBody? ";"
+
+EscapeSuccession ::=
+    "succession" QualifiedName "->" Guard? QualifiedName ";"
+
+
+// ─────────────────────────────────────────────────────────────────────────
+// Section 9c: State Bodies — State Machines (BH-4, BH-7)
+// Design decisions: BH-4, BH-7
+// Layer: L2
+//
+// A state reuses the behavioral substrate: a state is an occurrence with
+// entry/do/exit Steps; a transition is a Succession carrying a trigger
+// (accept), a guard, and an effect (a Step). Normalizes to SysML StateUsage
+// (8.3.18.6), TransitionUsage (8.3.18.9), and StateSubactionMembership
+// (8.3.18.4) for entry/do/exit.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * State body — the brace-delimited content of a state def or state usage.
+ *
+ * Design decisions: BH-7
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "{"
+ * Normalization: StateBody AST node
+ *
+ * Showcase example:
+ *   packages/vehicle/charging-states.deal — state def ChargingControl { ... }
+ */
+StateBody ::=
+    "{" _StateMember* "}"
+
+/**
+ * State member — anything admissible inside a StateBody.
+ *
+ * Design decisions: BH-4, BH-7
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens per alternative:
+ *   AnnotationStatement → "@"
+ *   EntryDoExit         → "entry" | "do" | "exit"
+ *   StateUsage          → "state"
+ *   TransitionStatement → "on"
+ *   SuccessionChain     → "start" | "done" | "terminate" | QualifiedName
+ * Normalization: transparent
+ *
+ * Ambiguity notes: all leading tokens are disjoint. A bare "S -> T;" inside a
+ *   StateBody (initial/final wiring, e.g. "start -> Idle;", "Fault -> done;")
+ *   is a SuccessionChain; a triggered transition begins with "on".
+ */
+_StateMember ::=
+    AnnotationStatement
+    | EntryDoExit
+    | StateUsage
+    | TransitionStatement
+    | SuccessionChain
+
+/**
+ * State usage — a nested state inside a state def (BH-4).
+ *
+ * Design decisions: BH-4
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "state"
+ * Normalization: SysML StateUsage (8.3.18.6).
+ *
+ * Showcase example:
+ *   packages/vehicle/charging-states.deal — state Charging { ... }
+ */
+StateUsage ::=
+    "state" IDENT TypeAnnotation? ( StateBody | ";" )
+
+/**
+ * Entry / do / exit behavior — a state's entry, do, or exit action (BH-4).
+ *
+ * Design decisions: BH-4
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "entry" | "do" | "exit"
+ * Normalization: a StateSubactionMembership (8.3.18.4) with kind =
+ *   entry | do | exit owning the referenced behavior Step.
+ *
+ * Showcase example:
+ *   packages/vehicle/charging-states.deal — entry / startCharge();
+ */
+EntryDoExit ::=
+    ( "entry" | "do" | "exit" ) "/" BehaviorRef ";"
+
+/**
+ * Behavior reference — a call or a feature path naming a behavior to perform.
+ *
+ * Design decisions: BH-4
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: IDENT
+ * Normalization: a performed Step (a call → InvocationExpression).
+ *
+ * Ambiguity notes: IDENT followed by "(" → FunctionCallExpression (a call);
+ *   otherwise a plain QualifiedName. LL(2), as in PostfixExpression.
+ */
+BehaviorRef ::=
+    FunctionCallExpression
+    | QualifiedName
+
+/**
+ * Transition statement — a single-line triggered transition (BH-4).
+ * Form: on TRIGGER [GUARD]? ( / EFFECT )? -> TARGET ;
+ *
+ * Design decisions: BH-4
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "on"
+ * Normalization: a SysML TransitionUsage (8.3.18.9) whose triggerAction,
+ *   guardExpression, and effectAction ride TransitionFeatureMemberships
+ *   (8.3.18.8); collapses KerML trigger/guard/effect/target onto one line.
+ *   Equivalent SysML v2 textual: "transition first S accept TRIGGER if GUARD
+ *   do EFFECT then TARGET".
+ *
+ * Showcase example:
+ *   packages/vehicle/charging-states.deal —
+ *     on TempHigh [temp > maxC] / shutdown() -> Fault;
+ */
+TransitionStatement ::=
+    "on" QualifiedName Guard? ( "/" BehaviorRef )? "->" TargetRef ";"
+
+/**
+ * Target reference — the target of a transition.
+ *
+ * Design decisions: BH-4
+ * Layer: L2 | Marker: [ext]
+ * FIRST tokens: "done" | "terminate" | QualifiedName
+ * Normalization: the target StateUsage, or a stdlib final/terminate endpoint.
+ */
+TargetRef ::=
+    "done"
+    | "terminate"
+    | QualifiedName
 
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -1285,8 +1732,11 @@ AttributeUsage ::=
  *   packages/vehicle/behaviors.deal:L22 — action requestTorque;
  *   packages/use-cases/driving.deal:L42-46 — action depart; action cruiseHighway; ...
  */
+// A sub-action (step/node) inside an ActionBody. May carry its own ActionBody
+// (pins + nested flow) or terminate with ";". Normalizes to a KerML Step /
+// SysML ActionUsage (8.3.17.4).
 ActionUsage ::=
-    "action" IDENT TypeAnnotation? ";"
+    "action" IDENT TypeAnnotation? ( ActionBody | ";" )
 
 /**
  * Actor usage — declares an actor in a use case definition.
