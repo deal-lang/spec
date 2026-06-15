@@ -1,0 +1,48 @@
+@header {
+    path:       packages/vehicle/charging-states.deal
+    schema:     deal/0.1
+    created:    2026-06-14T12:00:00Z by "David Dunnock" via claude:claude-code
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package vehicle.behaviors;
+
+import deal.std.units.{Percent, Temperature};
+
+// State-machine surface per BH-4/BH-7. A transition collapses KerML
+// trigger/guard/effect/target onto one line: `on TRIGGER [GUARD] / EFFECT -> TARGET`.
+// State behaviors use `entry|do|exit / BEHAVIOR`.
+
+/**
+ * Charging control state machine.
+ * Exercises: state def + StateBody, initial/final succession wiring,
+ * nested state usages, entry/do/exit behaviors, triggered transitions
+ * (with and without guard/effect), and `done` as a final target.
+ */
+state def ChargingControl {
+    in soc  : Percent;
+    in temp : Temperature;
+
+    start -> Idle;                                  // initial pseudostate
+
+    state Idle {
+        on PlugInserted -> Charging;                // on TRIGGER -> TARGET
+    }
+
+    state Charging {
+        entry / startCharge();                      // entry / EFFECT
+        do    / regulateCurrent();
+        exit  / stopCharge();
+
+        on PlugRemoved                  -> Idle;
+        on socFull   [soc >= 100] / notify()   -> Idle;     // on TRIGGER [GUARD] / EFFECT -> TARGET
+        on tempHigh  [temp > maxC]  / shutdown() -> Fault;
+    }
+
+    state Fault {
+        on reset -> Idle;
+    }
+
+    Fault -> done;                                  // final
+}
