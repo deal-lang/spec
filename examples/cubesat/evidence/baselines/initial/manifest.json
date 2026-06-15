@@ -22,7 +22,7 @@
       "verdict": "PARTIAL"
     },
     "link_budget": {
-      "content_hash": "8a42ba6bacc2e7fb14cad0fa0b3d8c21349ea9308532a36542c4b8bf70d27c48",
+      "content_hash": "330b281642ed9edc91be9cff68cf6c92c28d69fcb381757d63c12f8452e56c1b",
       "reproducibility_tier": "tolerant",
       "tool": "python",
       "tool_version": "3.14.5",
@@ -44,6 +44,6 @@
     }
   },
   "tag": "initial",
-  "timestamp": "2026-06-14T17:02:39Z",
+  "timestamp": "2026-06-14T18:44:53Z",
   "v": 1
 }
