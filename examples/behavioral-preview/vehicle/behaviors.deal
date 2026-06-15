@@ -1,0 +1,127 @@
+@header {
+    path:       packages/vehicle/behaviors.deal
+    schema:     deal/0.1
+    created:    2026-05-16T10:00:00Z by "David Dunnock"
+    modified:   2026-06-14T12:00:00Z by "David Dunnock" via claude:claude-code
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package vehicle.behaviors;
+
+import deal.std.units.{Percent, Energy, Velocity, Acceleration, Power, Duration, Temperature};
+
+// Behavioral surface per BH-1..BH-7. Succession is "->", item/object flow is
+// "~>". Pins are directed (in/out/inout). Control nodes (decide/par/loop/for)
+// are structured blocks; the escape hatch (node/succession) handles arbitrary
+// graphs. See DEAL-Behavior-ActivityFlow-Design.html.
+
+/**
+ * Acceleration action — full power delivery sequence.
+ * Exercises: pins, sub-actions, succession chain, item flow (~>), bind.
+ */
+action def Accelerate {
+    @assumes: "Battery SOC > 20% for full power availability"
+
+    in  throttlePosition : Real;
+    in  currentSpeed     : Velocity;
+    out resultingAccel   : Acceleration;
+
+    action requestTorque;
+    action deliverPower    { out delivered : Energy; }
+    action controlTraction { in  sample    : Energy; }
+
+    start -> requestTorque -> deliverPower -> controlTraction -> done;
+
+    deliverPower.delivered ~> controlTraction.sample : Energy;   // ItemFlow, typed
+    bind resultingAccel = controlTraction.sample;                // BindingConnector
+}
+
+/**
+ * Regenerative braking — decision on regen availability.
+ * Exercises: decide{} with [else], guarded succession.
+ */
+action def RegenerativeBrake {
+    in  brakePosition   : Real;
+    in  currentSpeed    : Velocity;
+    out recoveredEnergy : Energy;
+
+    action calculateRegenTorque;
+    action blendMechanicalBrake;
+    action recover { out energy : Energy; }
+
+    start -> calculateRegenTorque -> decide {
+        [brakePosition > 0.1] -> recover
+        [else]                -> blendMechanicalBrake
+    } -> done;
+
+    recover.energy ~> recoveredEnergy;
+}
+
+/**
+ * DC fast charge — staged charge with a charge loop and a taper decision.
+ * Exercises: loop while, decide, send/accept/assign, renamed `terminateCharge`.
+ */
+action def FastCharge {
+    @concerns: "Charge curve tapering above 60% SOC limits throughput"
+
+    in  chargerPower    : Power;
+    in  soc             : Percent;
+    out chargeTime      : Duration;
+    out energyDelivered : Energy;
+
+    action negotiate;
+    action preCondition;
+    action constantCurrent;
+    action constantVoltage;
+    action terminateCharge;          // renamed from `terminate` (now a reserved keyword)
+    action measure { out sample : Percent; }
+
+    accept PlugInserted;                          // AcceptActionUsage
+    assign chargeTime := soc + 10;                // AssignmentActionUsage
+
+    start -> negotiate -> preCondition -> constantCurrent -> constantVoltage;
+
+    loop while [soc < 80] {                        // LoopActionUsage (while)
+        constantCurrent -> measure;
+    }
+
+    constantVoltage -> decide {
+        [soc >= 80] -> terminateCharge
+        [else]      -> constantCurrent
+    }
+
+    terminateCharge -> done;
+
+    send Overheat to thermalController;           // SendActionUsage
+}
+
+/**
+ * Thermal regulation — parallel heating/cooling and per-zone iteration.
+ * Exercises: par{}/join, for..in, perform statement, escape hatch.
+ */
+action def ThermalRegulate {
+    in  ambientTemp : Temperature;
+    out batteryTemp : Temperature;
+    out motorTemp   : Temperature;
+
+    action monitorTemps;
+    action adjustCoolantFlow;
+    action activateHeating;
+    action activateCooling;
+    action balance { in zone : Temperature; }
+
+    start -> monitorTemps -> par {                // ForkNode … JoinNode
+        -> activateHeating
+        -> activateCooling
+    } -> adjustCoolantFlow -> done;
+
+    for zone in coolingZones {                     // ForLoopActionUsage
+        balance(zone);                             // PerformActionUsage
+    }
+
+    // Escape hatch (BH-1): an irreducible fault back-edge the structured
+    // forms cannot nest.
+    node faultMonitor : monitorTemps;
+    succession faultMonitor -> adjustCoolantFlow [overTemp];
+}
