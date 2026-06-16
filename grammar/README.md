@@ -2,7 +2,7 @@
 
 > **Language:** DEAL — Digital Engineering Authoring Language  
 > **Version:** 0.1.0-draft  
-> **Status:** Phase 0 complete — ready for Stage 1 parser implementation  
+> **Status:** Phase 0 complete; behavioral surface (BH-1..BH-7, `deal.ebnf` §9b/§9c) added and implemented in the compiler  
 > **Date:** 2026-05-18
 
 ---

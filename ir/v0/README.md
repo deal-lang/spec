@@ -2,7 +2,10 @@
 
 **Normative schema:** [`spec/ir/v0/schema.json`](./schema.json) (JSON Schema draft-2020-12)
 **ADR:** [`.planning/decisions/ADR-deal-ir-v0.md`](../../.planning/decisions/ADR-deal-ir-v0.md)
-**Status:** PROPOSED (becomes LOCKED after IR-LOCK checkpoint review, D-37)
+**Status:** Superseded by **[IR v0.1](../v0.1/README.md)** — an additive superset
+that adds the behavioral surface (BH-1..BH-7). Every valid v0 document is a valid
+v0.1 document; the toolchain now emits `ir_version: "v0.1"`. This page remains the
+reference for the structural kernel that v0.1 extends.
 
 ---
 

@@ -16,7 +16,9 @@ Models are split into **definitions** (`.deal`) and **compositions** (`.dealx`),
 
 ## Status
 
-**Phase 0 complete** — 65 design decisions locked, three EBNF grammar files written, showcase model validated. Ready for Stage 1 parser implementation.
+**Phase 0 complete** — 68 design decisions locked, the EBNF grammar files written, showcase model validated.
+
+**Behavioral surface (BH-1..BH-7) added** — `deal.ebnf` §9b/§9c (`ActionBody` / `StateBody`: actions, control flow, state machines, item flows, bindings) and the additive **IR v0.1** contract ([`ir/v0.1/`](./ir/v0.1/README.md): node/edge model, mapping contract, ADR). The showcase now demonstrates the behavioral surface end to end, and the DEAL→SysML v2 implementation in the [`deal`](https://github.com/deal-lang/deal) compiler is gated against it. See [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Repository Structure
 
