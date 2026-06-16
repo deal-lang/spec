@@ -1320,6 +1320,7 @@ StateBody ::=
  * Layer: L2 | Marker: [ext]
  * FIRST tokens per alternative:
  *   AnnotationStatement → "@"
+ *   PinDeclaration      → "in" | "out" | "inout"
  *   EntryDoExit         → "entry" | "do" | "exit"
  *   StateUsage          → "state"
  *   TransitionStatement → "on"
@@ -1328,10 +1329,13 @@ StateBody ::=
  *
  * Ambiguity notes: all leading tokens are disjoint. A bare "S -> T;" inside a
  *   StateBody (initial/final wiring, e.g. "start -> Idle;", "Fault -> done;")
- *   is a SuccessionChain; a triggered transition begins with "on".
+ *   is a SuccessionChain; a triggered transition begins with "on". A state may
+ *   carry directed parameters (pins), e.g. "in soc : Percent;" — these become
+ *   StateUsage/StateDefinition parameter Features (BH-4/BH-7).
  */
 _StateMember ::=
     AnnotationStatement
+    | PinDeclaration
     | EntryDoExit
     | StateUsage
     | TransitionStatement
