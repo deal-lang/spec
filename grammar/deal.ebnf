@@ -679,6 +679,9 @@ AttributeDefinition ::=
  * Marker: [ext]
  * FIRST tokens: "allocation"
  * Normalization: AllocationDefinition AST node
+ * SysML v2 mapping: AllocationDefinition (8.3.15.2) — specializes
+ *   ConnectionDefinition (8.3.13.3); KerML basis AssociationStructure.
+ *   Wiki-verified (sysml-v2-wiki closure). See spec/ir/sysml-mapping.json.
  *
  * Showcase example:
  *   (allocations in showcase are done via [<allocate>] tags in .dealx,
@@ -1471,6 +1474,11 @@ RequirementDefinition ::=
  * Marker: [ext]
  * FIRST tokens: "use" "case"
  * Normalization: UseCaseDefinition AST node
+ * SysML v2 mapping: UseCaseDefinition (8.3.25.3) — specializes
+ *   CaseDefinition > CalculationDefinition > ActionDefinition; KerML basis
+ *   Behavior. Body members (subject, actor, pre/postcondition) become the
+ *   corresponding SysML memberships. Wiki-verified (sysml-v2-wiki closure).
+ *   See spec/ir/sysml-mapping.json.
  *
  * Showcase example:
  *   packages/use-cases/driving.deal:L22 — use case def LongDistanceTrip { ... }
