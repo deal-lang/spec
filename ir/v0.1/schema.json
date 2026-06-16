@@ -1,0 +1,388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deal-lang.org/spec/ir/v0.1/schema.json",
+  "title": "DEAL IR v0.1 Document",
+  "description": "Normative JSON Schema for DEAL IR v0.1 — an ADDITIVE superset of v0 (ADR-0001). Adds the behavioral surface (BH-1..BH-7): 16 node kinds, 4 edge kinds, edge payload (guard/flow_type/subaction_kind), and a PayloadBehavioral variant. Every valid v0 document is a valid v0.1 document. The toolchain still emits ir_version \"v0\" during the transition; both are accepted here. See spec/ir/v0.1/behavioral-mapping.md and spec/ir/v0/README.md.",
+  "type": "object",
+  "required": ["edges", "elements", "ir_version", "v"],
+  "additionalProperties": false,
+  "properties": {
+    "edges": {
+      "description": "Adjacency list of all relationship edges. Alphabetical key order: dst, flow_type?, guard?, kind, src, subaction_kind?.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/Edge" }
+    },
+    "elements": {
+      "description": "Map from fully-qualified path ID (D-23) to IR node. Alphabetical key order within each node: kind, payload, source_file, span.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/IrNode" }
+    },
+    "ir_version": {
+      "description": "Schema version string. v0.1 is additive over v0; both strings validate during the transition (the emitter bumps to 'v0.1' alongside the S2.7 golden regeneration).",
+      "type": "string",
+      "enum": ["v0", "v0.1"]
+    },
+    "v": {
+      "description": "Document format version. Always 1.",
+      "type": "integer",
+      "enum": [1]
+    }
+  },
+  "$defs": {
+    "Edge": {
+      "title": "IR Edge",
+      "description": "A directed relationship between two IR nodes. Keys alphabetical: dst, flow_type?, guard?, kind, src, subaction_kind?. The optional fields are the behavioral edge payload (v0.1) and appear only on succession/item_flow/subaction edges.",
+      "type": "object",
+      "required": ["dst", "kind", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "dst": {
+          "description": "Destination node ID (fully-qualified path, D-23).",
+          "type": "string"
+        },
+        "flow_type": {
+          "description": "item_flow only: flow-def id typing the flow (`~> … : FlowType`).",
+          "type": "string"
+        },
+        "guard": {
+          "description": "succession only: guard expression text, or \"else\" for a decision default branch.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EdgeKind"
+        },
+        "src": {
+          "description": "Source node ID (fully-qualified path, D-23).",
+          "type": "string"
+        },
+        "subaction_kind": {
+          "description": "subaction only: \"entry\" | \"do\" | \"exit\".",
+          "type": "string",
+          "enum": ["entry", "do", "exit"]
+        }
+      }
+    },
+    "EdgeKind": {
+      "title": "EdgeKind",
+      "description": "Relationship category for an IR Edge. v0.1 adds succession, item_flow, binding, subaction.",
+      "type": "string",
+      "enum": [
+        "allocated_to",
+        "carries",
+        "connects_via",
+        "contains",
+        "derives_from",
+        "imports",
+        "redefines",
+        "satisfies",
+        "specializes",
+        "subsets",
+        "traces",
+        "succession",
+        "item_flow",
+        "binding",
+        "subaction"
+      ]
+    },
+    "IrNode": {
+      "title": "IR Node",
+      "description": "A single semantic element. Keys alphabetical: kind, payload, source_file, span.",
+      "type": "object",
+      "required": ["kind", "payload", "source_file", "span"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "$ref": "#/$defs/NodeKind" },
+        "payload": { "$ref": "#/$defs/Payload" },
+        "source_file": {
+          "description": "Workspace-relative source file path (T-02-11, T-02-19). No absolute paths.",
+          "type": "string"
+        },
+        "span": {
+          "description": "Byte-offset span carried over from the AST verbatim (D-15). [start, end] as u32 values.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "NodeKind": {
+      "title": "NodeKind",
+      "description": "Semantic category of an IR node. v0.1 adds the behavioral surface (each → one SysML v2 metaclass).",
+      "type": "string",
+      "enum": [
+        "action_def",
+        "allocation_def",
+        "allocate",
+        "annotation",
+        "attribute_def",
+        "attribute_usage",
+        "calc_def",
+        "connect",
+        "connection_def",
+        "constraint_def",
+        "expose",
+        "flow_def",
+        "interface_def",
+        "item_def",
+        "need_def",
+        "package",
+        "part_def",
+        "part_usage",
+        "port_def",
+        "port_usage",
+        "requirement_def",
+        "satisfy",
+        "state_def",
+        "subsystem",
+        "system",
+        "traceability_block",
+        "use_case_def",
+        "validate",
+        "action_usage",
+        "terminate_action",
+        "send_action",
+        "accept_action",
+        "assign_action",
+        "perform_action",
+        "while_loop_action",
+        "for_loop_action",
+        "decision_node",
+        "merge_node",
+        "fork_node",
+        "join_node",
+        "control_node",
+        "state_usage",
+        "transition",
+        "pin"
+      ]
+    },
+    "AgentMetadata": {
+      "title": "AgentMetadata",
+      "description": "Optional typed envelope for @confidence, @rationale, @assumes, @concerns. Alphabetical: assumes, concerns, confidence, rationale.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assumes": { "type": "array", "items": { "type": "string" } },
+        "concerns": { "type": "array", "items": { "type": "string" } },
+        "confidence": { "type": "number" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "SimBinding": {
+      "title": "SimBinding",
+      "description": "A simulation binding. Alphabetical: entry, equation, fidelity, operator, target, tool.",
+      "type": "object",
+      "required": ["operator", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "entry": { "type": "string" },
+        "equation": { "type": "string" },
+        "fidelity": { "type": "string" },
+        "operator": { "type": "string", "enum": ["computes", "validates_against"] },
+        "target": { "type": "string" },
+        "tool": { "type": "string" }
+      }
+    },
+    "Precision": {
+      "title": "Precision",
+      "description": "Generic precision slot (D-06/D-08). Parse-and-carry; not enforced until numeric-model Lane A.",
+      "type": "object",
+      "required": ["kind", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["sig_figures", "tolerance_absolute", "tolerance_relative"] },
+        "value": { "type": "string" }
+      }
+    },
+    "IrParam": {
+      "title": "IrParam",
+      "description": "A directed parameter in a calc_def node (D-12).",
+      "type": "object",
+      "required": ["direction", "name", "type_name"],
+      "additionalProperties": false,
+      "properties": {
+        "direction": { "type": "string", "enum": ["in", "inout", "out"] },
+        "name": { "type": "string" },
+        "type_name": { "type": "string" }
+      }
+    },
+    "PayloadBehavioral": {
+      "title": "Payload: behavioral (v0.1)",
+      "description": "Payload for the v0.1 behavioral node kinds (action_usage, terminate_action, send_action, accept_action, assign_action, perform_action, while_loop_action, for_loop_action, decision_node, merge_node, fork_node, join_node, control_node, state_usage, transition, pin). All fields optional; only those relevant to the node kind appear. Alphabetical key order. Refs are qualified-path ids or deferred-resolution feature-path text. See behavioral-mapping.md §2.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "callee_ref": { "description": "perform_action: invoked behavior reference.", "type": "string" },
+        "direction": { "description": "pin: in | out | inout.", "type": "string", "enum": ["in", "inout", "none", "out"] },
+        "effect_ref": { "description": "transition: performed effect Step reference.", "type": "string" },
+        "endpoint": { "description": "control_node: start | done.", "type": "string", "enum": ["start", "done"] },
+        "guard_expr": { "description": "accept_action / transition: guard expression text.", "type": "string" },
+        "implicit": { "description": "merge_node / join_node: true when normalizer-injected (§4).", "type": "boolean" },
+        "iterable_expr": { "description": "for_loop_action: iterable expression text.", "type": "string" },
+        "loop_kind": { "description": "while_loop_action: while | until.", "type": "string", "enum": ["while", "until"] },
+        "loop_var": { "description": "for_loop_action: iteration variable name.", "type": "string" },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "payload_ref": { "description": "send_action: payload (signal) reference.", "type": "string" },
+        "referent_ref": { "description": "assign_action: assigned feature reference.", "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } },
+        "source_ref": { "description": "transition: source state reference.", "type": "string" },
+        "target_ref": { "description": "send_action / transition: target reference.", "type": "string" },
+        "trigger_ref": { "description": "accept_action / transition: trigger (signal/event) reference.", "type": "string" },
+        "type_ref": { "description": "pin / action_usage / state_usage: declared type reference.", "type": "string" },
+        "value_expr": { "description": "assign_action: value expression text.", "type": "string" }
+      }
+    },
+    "PayloadPackage": {
+      "title": "Payload: package",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "name": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadPartDef": {
+      "title": "Payload: part_def",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadPortDef": {
+      "title": "Payload: port_def",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "direction": { "type": "string", "enum": ["in", "inout", "none", "out"] },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadRequirementDef": {
+      "title": "Payload: requirement_def",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadCalcDef": {
+      "title": "Payload: calc_def",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "is_statement_valued": { "type": "boolean" },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "params": { "type": "array", "items": { "$ref": "#/$defs/IrParam" } },
+        "precision": { "$ref": "#/$defs/Precision" },
+        "return_type": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadAttributeUsage": {
+      "title": "Payload: attribute_usage",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "direction": { "type": "string", "enum": ["in", "inout", "none", "out"] },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "precision": { "$ref": "#/$defs/Precision" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } },
+        "type_ref": { "type": "string" }
+      }
+    },
+    "PayloadPortUsage": {
+      "title": "Payload: port_usage",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "direction": { "type": "string", "enum": ["in", "inout", "none", "out"] },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } },
+        "type_ref": { "type": "string" }
+      }
+    },
+    "PayloadPartUsage": {
+      "title": "Payload: part_usage",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } },
+        "type_ref": { "type": "string" }
+      }
+    },
+    "PayloadSatisfy": {
+      "title": "Payload: satisfy",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "requirement_ref": { "type": "string" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadTraceabilityBlock": {
+      "title": "Payload: traceability_block",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } }
+      }
+    },
+    "PayloadGeneric": {
+      "title": "Payload: generic",
+      "description": "Generic payload used by node kinds that share the same basic shape (action_def, state_def, attribute_def, item_def, interface_def, connection_def, flow_def, allocation_def, constraint_def, need_def, use_case_def, system, subsystem, connect, expose, allocate, validate, annotation).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_metadata": { "$ref": "#/$defs/AgentMetadata" },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "precision": { "$ref": "#/$defs/Precision" },
+        "simulation_bindings": { "type": "array", "items": { "$ref": "#/$defs/SimBinding" } },
+        "type_ref": { "type": "string" }
+      }
+    },
+    "Payload": {
+      "title": "Payload",
+      "description": "Per-node payload. Behavioral nodes use PayloadBehavioral; structural nodes use the v0 variants. Alphabetical key ordering throughout.",
+      "oneOf": [
+        { "$ref": "#/$defs/PayloadPackage" },
+        { "$ref": "#/$defs/PayloadPartDef" },
+        { "$ref": "#/$defs/PayloadPortDef" },
+        { "$ref": "#/$defs/PayloadRequirementDef" },
+        { "$ref": "#/$defs/PayloadCalcDef" },
+        { "$ref": "#/$defs/PayloadAttributeUsage" },
+        { "$ref": "#/$defs/PayloadPortUsage" },
+        { "$ref": "#/$defs/PayloadPartUsage" },
+        { "$ref": "#/$defs/PayloadSatisfy" },
+        { "$ref": "#/$defs/PayloadTraceabilityBlock" },
+        { "$ref": "#/$defs/PayloadBehavioral" },
+        { "$ref": "#/$defs/PayloadGeneric" }
+      ]
+    }
+  }
+}
