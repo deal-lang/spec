@@ -1,6 +1,11 @@
 # Planning seed — Structured expression emission (Stage 3 candidate)
 
-**Status:** Not started. Seeded at the close of Stage 2 (behavioral surface).
+> **RETIRED — superseded by IR v0.2 (Stage 3 complete).** This seed has been
+> realized. The authoritative contract is [`../v0.2/expression-mapping.md`](../v0.2/expression-mapping.md)
+> with the migration decision in [`../v0.2/ADR-0002-ir-v0_2-structured-expressions.md`](../v0.2/ADR-0002-ir-v0_2-structured-expressions.md).
+> This file is kept only for historical context and may be removed.
+
+**Status:** Retired (realized in IR v0.2). Seeded at the close of Stage 2.
 **Context:** BH-1..BH-7 behavioral surface; `behavioral-mapping.md`; ADR-0001.
 
 ## Problem

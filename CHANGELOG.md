@@ -6,6 +6,27 @@ IR contract, and the showcase corpus. Format loosely based on
 
 ## [Unreleased]
 
+### Added — Structured behavioral expressions (Stage 3, IR v0.2)
+
+- **IR v0.2** (`ir/v0.2/`) — additive superset of v0.1 that lifts behavioral
+  guards, assignment values, accept payloads, and loop bounds from opaque source
+  text to structured expression nodes:
+  - `schema.json` — 4 expression node kinds (`operator_expr`, `feature_ref_expr`,
+    `literal_expr`, `invocation_expr`) and a `PayloadExpression` variant; the
+    guard/value/iterable/effect/callee slots now carry an expr-node id;
+    `Edge.guard` keeps `"else"` as a sentinel; accepts `ir_version` `"v0"`,
+    `"v0.1"`, `"v0.2"`.
+  - `expression-mapping.md` — the locked DEAL → IR → KerML/SysML v2 expression
+    mapping contract (metaclasses + clauses verified against the KerML and
+    SysML v2 LLM wikis; operator → KerML symbol table; 8.4 implied relationships).
+  - `ADR-0002-ir-v0_2-structured-expressions.md` — the additive text→structure
+    migration + `ir_version` bump.
+- **Traceability** — `deal_mappings` recorded on the expression metaclass atoms
+  (10 KerML + `TriggerInvocationExpression` in SysML v2); `index/coverage.json`
+  rebuilt.
+- **Retired** — `ir/v0.1/FUTURE-structured-expressions.md` (the Stage-3 seed),
+  now realized by v0.2.
+
 ### Added — Behavioral surface (BH-1..BH-7)
 
 - **Grammar** — `deal.ebnf` §9b/§9c: `ActionBody` / `StateBody` and their

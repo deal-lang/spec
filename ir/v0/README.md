@@ -2,10 +2,11 @@
 
 **Normative schema:** [`spec/ir/v0/schema.json`](./schema.json) (JSON Schema draft-2020-12)
 **ADR:** [`.planning/decisions/ADR-deal-ir-v0.md`](../../.planning/decisions/ADR-deal-ir-v0.md)
-**Status:** Superseded by **[IR v0.1](../v0.1/README.md)** — an additive superset
-that adds the behavioral surface (BH-1..BH-7). Every valid v0 document is a valid
-v0.1 document; the toolchain now emits `ir_version: "v0.1"`. This page remains the
-reference for the structural kernel that v0.1 extends.
+**Status:** Superseded by **[IR v0.1](../v0.1/README.md)** (behavioral surface,
+BH-1..BH-7) and then **[IR v0.2](../v0.2/README.md)** (structured behavioral
+expressions). Each is an additive superset of the prior; every valid v0 document
+remains valid and the toolchain now emits `ir_version: "v0.2"`. This page remains
+the reference for the structural kernel that v0.1/v0.2 extend.
 
 ---
 

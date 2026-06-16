@@ -3,8 +3,12 @@
 **Normative schema:** [`spec/ir/v0.1/schema.json`](./schema.json) (JSON Schema draft-2020-12)
 **ADR:** [`ADR-0001-ir-v0_1-behavioral.md`](./ADR-0001-ir-v0_1-behavioral.md)
 **Mapping contract:** [`behavioral-mapping.md`](./behavioral-mapping.md)
-**Status:** Active. Additive superset of [IR v0](../v0/README.md) — every valid
-v0 document is a valid v0.1 document. The toolchain emits `ir_version: "v0.1"`.
+**Status:** Superseded by **[IR v0.2](../v0.2/README.md)** — an additive superset
+that lifts behavioral guards/values/payloads from text to structured expression
+nodes. Every valid v0.1 *structural* document remains valid; the toolchain now
+emits `ir_version: "v0.2"`. This page remains the reference for the behavioral
+surface that v0.2 extends. (v0.1 is itself an additive superset of
+[IR v0](../v0/README.md).)
 
 ---
 
@@ -41,11 +45,11 @@ behavioral bodies. The §4 control-flow desugaring (decide → DecisionNode +
 implicit MergeNode; par → ForkNode + implicit JoinNode) is performed in lowering;
 the injected merge/join carry `implicit: true`.
 
-## Known limitation (Stage-3 candidate)
+## Resolved limitation (now in v0.2)
 
-Guards, assignment values, and accept/send payloads are carried as **source
-text** (`guard_expr`, `value_expr`, `iterable_expr`), not structured expression
-trees. The SysML emitter therefore emits the structural surface (successions,
-trigger/effect memberships, pin typing) but not guard `Expression`s. The plan to
-lift these to structured SysML `Expression` trees is seeded in
-[`FUTURE-structured-expressions.md`](./FUTURE-structured-expressions.md).
+In v0.1, guards, assignment values, and accept/send payloads were carried as
+**source text** (`guard_expr`, `value_expr`, `iterable_expr`), so the SysML
+emitter emitted the structural surface but not guard `Expression`s. **[IR v0.2](../v0.2/README.md)
+lifts these to structured expression nodes** that emit as schema-valid SysML v2 /
+KerML `Expression` trees — see [`../v0.2/expression-mapping.md`](../v0.2/expression-mapping.md).
+The Stage-3 seed `FUTURE-structured-expressions.md` is retired.
