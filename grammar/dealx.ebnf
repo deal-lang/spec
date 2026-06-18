@@ -56,6 +56,11 @@
  *   a composition block ([<) or an inline definition (element keywords).
  *   TAG_OPEN "[<" uniquely identifies composition content vs definitions.
  */
+// ADR-0004 R5: in `.dealx` compositions, `import` may appear ONLY here — at the
+// top of the file, after the package declaration and before any composition
+// content — and is file-scoped. An `import` after composition content is a
+// placement error (the parser emits a specific diagnostic). Compositions are
+// application roots; they neither nest imports nor `export` (no re-export).
 DealxFile ::=
     HeaderBlock?
     PackageDeclaration

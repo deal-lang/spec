@@ -96,7 +96,7 @@ Within any module, the resolvable names are exactly:
    and the entire stdlib must be imported;
 2. the module's **own declarations**; and
 3. names brought in by its **imports** (named items, or a package's public surface via wildcard),
-   including names a `public import` re-exported into a package the module imports.
+   including names a package's barrel `export`s (R6).
 
 A reference — **bare or qualified** — to any name not in that set is **`E2000` name-not-found**.
 Qualified paths are no longer a global escape hatch. (This is the central reversal of ADR-0003.)
@@ -115,7 +115,7 @@ Qualified paths are no longer a global escape hatch. (This is the central revers
 
 * `import deal.std.units.{km, m, mm};` binds **only** `km`, `m`, `mm`.
 * `import spacecraft.*;` binds the **public surface of package `spacecraft`** — its own public
-  declarations plus everything it `public import`s (R6). It does **not** auto-descend into
+  declarations plus everything it `export`s (R6 — its barrel). It does **not** auto-descend into
   sub-packages: `spacecraft.eps` members are reachable only if `spacecraft` re-exports them
   (a barrel) or by importing `spacecraft.eps` directly. This keeps packages encapsulating and
   makes the public surface explicit.
@@ -128,27 +128,37 @@ Qualified paths are no longer a global escape hatch. (This is the central revers
 * **`.dealx` (compositions):** `import` may appear **only at the top of the file**, and is
   **file-scoped**. Compositions are application roots; their imports are a flat, top-level manifest.
 
-### R6 — `public` / `private` imports control re-export
+### R6 — `import` is always local; `export` re-exports (barrels)
 
-* A plain `import` or **`private import`** (default) makes the imported names visible **only inside
-  the importing module**; they are a private implementation detail.
-* A **`public import`** *re-exports* the imported names as part of the importing module's **own
-  public surface**: any module that imports this one (or wildcard-imports its package) also sees
-  them. This is the Rust `pub use` / TypeScript `export … from` / D `public import` pattern, and it
-  is how **barrel/facade packages** are built:
+> **Amended 2026-06-18 (grounded in TypeScript / Next.js).** The original R6 used D-style
+> `public import`. DEAL already has a separate `export` construct that is exactly TypeScript's
+> `export … from`, and the cubesat barrels already use it. Rather than add a redundant second
+> re-export mechanism, this ADR adopts `export` as the **sole** re-export channel and drops
+> `public`/`private import`. TypeScript keeps `import` (consume → local) and `export … from`
+> (re-export → no local binding) orthogonal; DEAL follows suit.
+
+* A plain **`import`** is **always local** — the imported names are visible **only inside the
+  importing module**, a private implementation detail. There is **no visibility modifier** on
+  `import`.
+* An **`export`** *re-exports* names from a sub-module as part of the importing package's **own
+  public surface**: any module that imports this package (or wildcard-imports it) also sees them.
+  This is TypeScript's `export … from` / the barrel pattern, and it is how **barrel/facade
+  packages** are built:
 
 ```deal
 // packages/spacecraft/index.deal — curated public surface for the package
 package spacecraft;
-public import spacecraft.eps.{BatteryPack, SolarArray};
-public import spacecraft.adcs.{ReactionWheel};
+export eps.{BatteryPack, SolarArray};
+export adcs.{ReactionWheel};
 ```
 ```dealx
 // model/halcyon.dealx
-import spacecraft.*;   // sees BatteryPack, SolarArray, ReactionWheel via the index
+import spacecraft.*;   // sees BatteryPack, SolarArray, ReactionWheel via the barrel
 ```
 
-Re-export is transitive through `public import` chains; a `private`/plain import never propagates.
+Re-export is transitive through `export` chains; a plain `import` never propagates. Following
+Next.js's barrel guidance (wildcard re-export defeats tree-shaking), `export` is **named-only** —
+there is no wildcard `export`.
 
 ### R7 — Enforcement is strict from the start
 
@@ -169,8 +179,8 @@ the implementing work. `W0500` unused-import becomes meaningful and **is emitted
 * Bad, because it is a **breaking semantic change**: models that relied on qualified-path
   resolution without imports stop compiling until imports are added. Mitigated by pre-release
   status, the example-update work (R7), and an LSP "add import" quick-fix.
-* Bad, because it is a **substantial implementation surface**: parser (placement, `public`/`private`
-  modifiers, nested imports), sema (scoped visibility, re-export propagation, closure loading,
+* Bad, because it is a **substantial implementation surface**: parser (import placement + nested
+  imports), sema (scoped visibility, `export` re-export propagation, closure loading,
   `E2000` on un-imported, `W0500`), the `deal.toml` workspace/alias model, the CLI check driver,
   and the LSP loader — sequenced in the roadmap that follows this ADR.
 * Neutral, because the `imports_graph` already recorded in Pass A becomes the live driver of
@@ -181,8 +191,8 @@ the implementing work. `W0500` unused-import becomes meaningful and **is emitted
 Implementation is confirmed by:
 
 * **Scoping:** a qualified reference to a non-imported symbol emits `E2000`; the same reference with
-  the import present resolves. A `public import` makes a name visible to a downstream importer; a
-  `private`/plain import does not (the downstream importer gets `E2000`).
+  the import present resolves. A barrel `export` makes a name visible to a downstream importer; a
+  plain `import` does not (the downstream importer gets `E2000`).
 * **Closure loading:** opening a composition parses exactly its transitive import set — a file that
   nothing imports is not parsed; a property check asserts `parsed-set == import-closure`.
 * **Granularity:** `p.{A}` makes `A` visible and `B` not; `p.*` makes the package's public surface
@@ -199,7 +209,7 @@ Implementation is confirmed by:
 ### Import-graph module model (chosen)
 
 * Good — encapsulation, trustworthy imports, O(reachable) loading, matches `.deal`/`.dealx`.
-* Good — barrel re-export (`public import`) directly serves the reuse/sharability driver.
+* Good — barrel re-export (`export`) directly serves the reuse/sharability driver.
 * Bad — breaking change + large implementation surface (accepted; pre-release).
 
 ### Flat workspace-merge (ADR-0003)
@@ -220,7 +230,7 @@ Implementation is confirmed by:
 
 A package is declared with `package foo.bar;`; multiple files may contribute to one package. A
 package's **public surface** is its top-level declarations (public by default within the model,
-importable by other modules) plus its `public import` re-exports. (A future `private`/`internal`
+importable by other modules) plus its `export` re-exports. (A future `private`/`internal`
 modifier on a top-level declaration to make it package-internal is a possible extension, noted but
 not decided here.) The existing in-definition visibility groups (`public(...)`, `protected(...)`)
 are a separate, orthogonal feature (member visibility *within* a def) and are unaffected.
@@ -246,6 +256,6 @@ on the flat merge — which is why this decision must precede that loader work.
 
 * Encapsulation + trustworthy imports → R2 (import-scoped visibility, `E2000` on un-imported), R7
   (strict + `W0500`).
-* Reuse/sharability → R5 (anywhere-in-`.deal` placement), R6 (`public import` re-export / barrels).
+* Reuse/sharability → R5 (anywhere-in-`.deal` placement), R6 (`export` re-export / barrels).
 * Scalability → R3 (closure-driven loading), R4 (granular binding).
 * Layout-agnostic → R1 (`deal.toml` roots + aliases).

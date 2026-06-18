@@ -1577,12 +1577,21 @@ DefinitionBody ::=
  *   SINGLE_LINE_COMMENT and BLOCK_COMMENT are skipped by the lexer.
  */
 _BodyMember ::=
-    VisibilityWrapper
+    ImportDeclaration
+    | VisibilityWrapper
     | AnnotationStatement
     | VerificationBlock
     | PreconditionBlock
     | PostconditionBlock
     | MemberDeclaration
+
+// ADR-0004 R5: in `.deal` definitions an `import` may appear anywhere — at file
+// top (DealFile), inside a `package` block, or nested in a definition body —
+// binding into the enclosing scope. `import` (FIRST token "import") and the
+// VisibilityWrapper block (`public`/`protected`/`private` then "(") are
+// disambiguated by their FIRST tokens. `.dealx` compositions, by contrast,
+// admit imports only at the top of the file (see dealx.ebnf). Imports are
+// always LOCAL; re-export is the separate `export` construct (Section 5, R6).
 
 /**
  * Visibility wrapper — groups members under a visibility scope.
