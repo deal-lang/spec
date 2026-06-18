@@ -1,12 +1,22 @@
 ---
-status: "accepted"
+status: "superseded by ADR-0004"
 date: 2026-06-16
 decision-makers: [David (project owner)]
 consulted: []
 informed: []
+superseded-by: ADR-0004
 ---
 
 # Cross-file name resolution: prefix-subtree unique binding
+
+> **Superseded by [ADR-0004](ADR-0004-module-resolution-and-import-scoping.md).** This ADR chose a
+> flat workspace-merged namespace, which made `import` statements semantically thin (qualified
+> references resolved with no import, and the whole workspace was parsed eagerly). ADR-0003 arose
+> from a miscommunication: the intent was to make file *layout* recommended-not-enforced (à la
+> TypeScript), not to merge everything into one namespace. ADR-0004 replaces the flat merge with an
+> import-graph module model (import-scoped visibility, `public`/`private` re-export, closure-driven
+> loading). The prefix-subtree binding *rule* defined here is retained where a wildcard/named import
+> resolves a name; what changes is that resolution is now gated by imports and scoped per module.
 
 ## Context and Problem Statement
 
