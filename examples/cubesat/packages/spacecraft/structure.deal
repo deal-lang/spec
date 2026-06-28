@@ -9,7 +9,7 @@
 }
 package spacecraft.structure;
 
-import deal.std.units.{kg, mm, N};
+import deal.std.units.{Force, Length, Mass, N, kg, mm};
 
 /**
  * Anything with a stowed/deployed state transition fired at separation:

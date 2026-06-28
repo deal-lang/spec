@@ -9,7 +9,7 @@
 }
 package use_cases.imaging;
 
-import deal.std.units.{km, deg, s};
+import deal.std.units.{Angle, Duration, deg, km, s};
 import use_cases.actors.{Operator};
 import spacecraft.system.{Halcyon};
 

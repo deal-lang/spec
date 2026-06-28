@@ -9,7 +9,7 @@
 }
 package interfaces.harnesses;
 
-import deal.std.units.{V, A};
+import deal.std.units.{A, Current, Power, V, Voltage};
 
 /*
  * Physical harness/connection types and the power flow carried over them.

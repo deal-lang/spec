@@ -9,7 +9,7 @@
 }
 package use_cases.downlink;
 
-import deal.std.units.{deg, s};
+import deal.std.units.{Angle, Duration, deg, s};
 import use_cases.actors.{GroundSegment};
 import spacecraft.system.{Halcyon};
 

@@ -9,7 +9,7 @@
 }
 package use_cases.safemode;
 
-import deal.std.units.{deg};
+import deal.std.units.{Angle, deg};
 import use_cases.actors.{Operator, FaultMonitor};
 import spacecraft.system.{Halcyon};
 

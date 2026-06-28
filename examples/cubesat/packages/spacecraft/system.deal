@@ -9,7 +9,7 @@
 }
 package spacecraft.system;
 
-import deal.std.units.{kg, km, deg, s};
+import deal.std.units.{Angle, Duration, Length, Mass, deg, kg, km, s};
 import spacecraft.structure.{BusFrame6U};
 import spacecraft.eps.{BatteryPack, SolarArray, PowerDistributionUnit};
 import spacecraft.adcs.{ADCSSuite};

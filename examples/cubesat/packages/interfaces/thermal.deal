@@ -9,7 +9,7 @@
 }
 package interfaces.thermal;
 
-import deal.std.units.{degC, W, V, kg};
+import deal.std.units.{Mass, Power, Temperature, V, Voltage, W, degC, kg};
 
 /**
  * Conductive thermal strap attachment — passive heat path from a

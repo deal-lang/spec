@@ -21,11 +21,12 @@ package spacecraft.eps;
  * (E2000), so the type is imported selectively here. Glob → NamespaceImport
  * (8.3.2.4.6) is exercised where the use site is qualified.
  */
-import deal.std.units.{kg, W, V, A, Wh, degC, ohm, percent, m2};
+import deal.std.units.{A, Area, Energy, Mass, Power, Resistance, V, Voltage, W, Wh, degC, kg, m2, ohm, percent};
 import interfaces.power.{UnregulatedBusPort, ArrayInputPort, SwitchedRailPort, Rail3V3, Rail5V, Rail12V, UmbilicalPort, PowerTelemetry};
 import interfaces.data.{CANPort};
 import interfaces.thermal.{ThermallyManaged};
 import spacecraft.structure as structure;
+import spacecraft.structure.{Deployable};
 
 /**
  * 18650 Li-ion cell, qualified screening lot.
@@ -121,7 +122,7 @@ part def BatteryPack <<specializes>> ThermallyManaged {
  * Deployable solar array wing, 2 panels, 7 strings of triple-junction
  * GaAs cells. Body-mounted string handled as a degenerate wing.
  */
-part def SolarArray <<specializes>> structure.Deployable {
+part def SolarArray <<specializes>> Deployable {
     @confidence: 0.9
     @assumes: "28.5% BOL cell efficiency; 2.5%/yr combined degradation"
     public (

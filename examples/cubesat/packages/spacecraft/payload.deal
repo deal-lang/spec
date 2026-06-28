@@ -9,7 +9,7 @@
 }
 package spacecraft.payload;
 
-import deal.std.units.{kg, W, mm, degC};
+import deal.std.units.{Length, Mass, Power, W, degC, kg, mm};
 import interfaces.power.{Rail12V};
 import interfaces.data.{SpaceWirePort};
 import interfaces.thermal.{ThermallyManaged};

@@ -9,7 +9,7 @@
 }
 package interfaces.rf;
 
-import deal.std.units.{MHz, GHz, W, ohm};
+import deal.std.units.{Frequency, GHz, MHz, Power, Resistance, W, ohm};
 
 // NOTE: decibel quantities (dB, dBm, dBi, dBW) are carried as Real with the
 // scale named in the attribute — deal-std/0.1 has no logarithmic units yet
