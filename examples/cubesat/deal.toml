@@ -35,11 +35,14 @@ use_cases  = "packages/use-cases"
 analysis   = "packages/analysis"
 
 # Path dependency on the in-repo deal-stdlib (D-66, referenced in place).
-# `deal check` seeds dimension/unit definitions from this dep so quantity
-# types (Area, Frequency, …) resolve without per-file import and without the
-# hand-maintained isBuiltinType allowlist. Path is relative to this file.
+# Production dependency on the DEAL standard library (ADR-0004 P6). `deal install`
+# vendors it into `.deal/deps/deal-stdlib/`, where the compiler and LSP resolve
+# it (closure loader reads `.deal/deps/*/packages`). `.deal/` is gitignored, so
+# CI runs `deal install` before checking the examples. Git deps are location-
+# independent, unlike the former relative path dep which broke across the
+# top-level `spec/` and `deal/spec` submodule checkouts (different depth).
 [dependencies]
-deal-stdlib = { path = "../../../deal-stdlib" }
+deal-stdlib = { git = "https://github.com/deal-lang/deal-stdlib", tag = "v0.4.1" }
 
 [simulations]
 registry = "simulations/deal.sims.toml"

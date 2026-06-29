@@ -1,0 +1,7 @@
+version = 1
+
+[[package]]
+git = "https://github.com/deal-lang/deal-stdlib"
+name = "deal-stdlib"
+rev = "7eec0b3630f5591bdaaa65619fdebd5fe7a7408b"
+tag = "v0.4.1"

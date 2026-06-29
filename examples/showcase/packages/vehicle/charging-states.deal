@@ -8,7 +8,7 @@
 }
 package vehicle.behaviors;
 
-import deal.std.units.{Percent, Temperature};
+import deal.std.units.{Dimensionless, Temperature};
 
 // State-machine surface per BH-4/BH-7. A transition collapses KerML
 // trigger/guard/effect/target onto one line: `on TRIGGER [GUARD] / EFFECT -> TARGET`.
@@ -21,7 +21,7 @@ import deal.std.units.{Percent, Temperature};
  * transitions (with and without guard/effect), and `done` as a final target.
  */
 state def ChargingControl {
-    in soc  : Percent;
+    in soc  : Dimensionless;
     in temp : Temperature;
 
     start -> Idle;

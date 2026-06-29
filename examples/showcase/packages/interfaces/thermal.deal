@@ -9,7 +9,7 @@
 }
 package interfaces.thermal;
 
-import deal.std.units.{degC, W, kW, L, kg};
+import deal.std.units.{L, Mass, Power, Temperature, VolumeFlowRate, W, degC, kW, kg};
 
 /**
  * Liquid cooling loop port for thermal management.

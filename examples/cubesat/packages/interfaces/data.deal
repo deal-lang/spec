@@ -9,7 +9,7 @@
 }
 package interfaces.data;
 
-import deal.std.units.{MHz};
+import deal.std.units.{Frequency, MHz};
 
 /**
  * CAN bus node attachment point (housekeeping bus).

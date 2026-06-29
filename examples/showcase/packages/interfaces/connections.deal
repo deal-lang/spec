@@ -9,7 +9,7 @@
 }
 package interfaces.connections;
 
-import deal.std.units.{V, A, kW, m, mm, kPa, L};
+import deal.std.units.{A, AngularVelocity, Current, L, Length, Power, Pressure, Temperature, Torque, V, Voltage, VolumeFlowRate, kPa, kW, m, mm};
 
 /**
  * High-voltage DC power cable assembly.

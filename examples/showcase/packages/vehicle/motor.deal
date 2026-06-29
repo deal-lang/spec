@@ -9,7 +9,7 @@
 }
 package vehicle.motor;
 
-import deal.std.units.{kg, kW, W, Nm, rpm, V, A, degC, ohm};
+import deal.std.units.{A, AngularVelocity, Mass, Nm, Power, Resistance, Temperature, Torque, V, W, degC, kW, kg, ohm, rpm};
 import interfaces.{RegenPowerPort, CoolantPort, ThermallyManaged, ShaftPort, CANBus};
 
 /**

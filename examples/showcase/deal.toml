@@ -17,7 +17,11 @@ reqs       = "packages/requirements"
 use_cases  = "packages/use-cases"
 
 [dependencies]
-deal-std = "0.1"
+# Production dependency on the DEAL standard library (ADR-0004 P6). `deal install`
+# vendors it into `.deal/deps/deal-stdlib/`, where the compiler and LSP resolve
+# it (closure loader reads `.deal/deps/*/packages`). `.deal/` is gitignored, so
+# CI runs `deal install` before checking the examples.
+deal-stdlib = { git = "https://github.com/deal-lang/deal-stdlib", tag = "v0.4.1" }
 
 [simulations]
 registry = "simulations/deal.sims.toml"

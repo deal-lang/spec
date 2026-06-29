@@ -9,7 +9,7 @@
 }
 package spacecraft.comms;
 
-import deal.std.units.{kg, W, V};
+import deal.std.units.{Mass, Power, V, W, kg};
 import interfaces.rf.{UHFPort, XBandPort};
 import interfaces.power.{Rail12V};
 import interfaces.data.{CANPort, SpaceWirePort};

@@ -9,7 +9,7 @@
 }
 package interfaces.power;
 
-import deal.std.units.{V, A, W, percent};
+import deal.std.units.{A, Current, Power, V, Voltage, W, percent};
 
 /**
  * Bus power telemetry sample — voltage/current/SoC tuple reported by the

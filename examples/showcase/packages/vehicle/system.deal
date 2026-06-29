@@ -1,0 +1,49 @@
+@header {
+    path:       packages/vehicle/system.deal
+    schema:     deal/0.1
+    created:    2026-06-25T00:00:00Z by "David Dunnock" via claude:cowork
+    modified:   2026-06-25T00:00:00Z by "David Dunnock" via claude:cowork
+    hash:       sha256:pending
+    status:     draft
+    marking:    Unclassified
+}
+package vehicle.system;
+
+import deal.std.units.{kg};
+import vehicle.battery.{BatteryPack, BMS};
+import vehicle.motor.{TractionMotor};
+import vehicle.components.{Inverter, ReductionGear, CoolantPump, HeatExchanger, CoolantReservoir, Chassis, Wheel};
+
+/**
+ * EVPlatform — the system of interest.
+ *
+ * This `part def` is the use-case subject and the structure view's BDD root.
+ * The composition in model/vehicle.dealx instantiates it as the top-level
+ * `[<system EVPlatform>]`, grouping these parts under the EnergyStorage,
+ * Propulsion, Thermal, and Drivetrain subsystems.
+ *
+ * KerML mapping: a system-of-interest `part def` is the same M1 mapping as
+ * any other part definition — KerML Structure / SysML PartDefinition
+ * (8.3.4.3.2); each contained `part` becomes a Feature carried by a
+ * synthesized FeatureMembership (M2, 8.3.3.1.6).
+ *
+ * @see DCFastCharge, ColdWeatherCharge — charging use cases (subject)
+ * @see DailyCommute, LongDistanceTrip — driving use cases (subject)
+ * @see REQ_SYS_003 — curb-weight envelope (satisfied by curbWeight)
+ */
+part def EVPlatform {
+    @rationale: "800V battery-electric platform; rear-drive single-motor architecture"
+    public (
+        part battery : BatteryPack [1];
+        part bms : BMS [1];
+        part motor : TractionMotor [1];
+        part inverter : Inverter [1];
+        part gearbox : ReductionGear [1];
+        part pump : CoolantPump [1];
+        part heatEx : HeatExchanger [1];
+        part reservoir : CoolantReservoir [1];
+        part frame : Chassis [1];
+        part wheels : Wheel [4];
+        attribute curbWeight : Mass [1] = kg(2100);
+    )
+}

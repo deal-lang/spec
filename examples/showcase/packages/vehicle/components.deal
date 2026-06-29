@@ -9,7 +9,7 @@
 }
 package vehicle.components;
 
-import deal.std.units.{kg, kW, W, m, L, mm, kPa, LPM};
+import deal.std.units.{L, LPM, Length, Mass, Power, Volume, VolumeFlowRate, W, kPa, kW, kg, m, mm};
 import interfaces.{HVDCPort, CoolantPort, CANBus, ShaftPort};
 
 /**

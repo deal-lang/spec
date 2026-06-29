@@ -10,7 +10,7 @@
 }
 package requirements.system;
 
-import deal.std.units.{kg, km, hr, kWh, kW, min, degC, s};
+import deal.std.units.{Duration, Energy, Length, Mass, Power, Temperature, degC, hr, kW, kWh, kg, km, min, s};
 
 /** The vehicle shall achieve a minimum range on a single charge. */
 requirement def REQ_SYS_001 {

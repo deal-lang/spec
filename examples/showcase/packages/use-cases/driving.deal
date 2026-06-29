@@ -9,8 +9,9 @@
 }
 package use_cases.driving;
 
-import deal.std.units.{km, min, kW};
-import vehicle.{EVPlatform};
+import deal.std.units.{Length, kW, km, min};
+import vehicle.system.{EVPlatform};
+import deal.std.actors.{Person};
 
 /**
  * Long-distance highway trip.

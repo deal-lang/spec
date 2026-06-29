@@ -9,7 +9,7 @@
 }
 package spacecraft.thermal;
 
-import deal.std.units.{kg, W, m2, degC};
+import deal.std.units.{Area, Mass, Power, Temperature, W, degC, kg, m2};
 import interfaces.thermal.{HeaterCircuitPort, ConductiveStrapPort};
 import interfaces.power.{Rail12V};
 

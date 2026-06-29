@@ -9,8 +9,9 @@
 }
 package use_cases.charging;
 
-import deal.std.units.{kW, min, degC};
-import vehicle.{EVPlatform};
+import deal.std.units.{Power, Temperature, degC, kW, min};
+import vehicle.system.{EVPlatform};
+import deal.std.actors.{Person};
 
 /**
  * DC fast charge session at a public charging station.

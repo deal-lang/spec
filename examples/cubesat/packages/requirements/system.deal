@@ -9,7 +9,7 @@
 }
 package requirements.system;
 
-import deal.std.units.{kg, km, m, W, Wh, deg, hr, degC, percent};
+import deal.std.units.{Angle, Energy, Length, Mass, Temperature, W, Wh, deg, degC, hr, kg, km, m, percent};
 import requirements.mission.{REQ_MIS_001, REQ_MIS_003, REQ_MIS_004};
 import requirements.needs.{NEED_LAUNCH_COMPAT};
 

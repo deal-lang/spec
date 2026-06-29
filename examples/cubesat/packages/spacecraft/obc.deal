@@ -9,7 +9,7 @@
 }
 package spacecraft.obc;
 
-import deal.std.units.{kg, W, MHz};
+import deal.std.units.{Frequency, MHz, Mass, Power, W, kg};
 import interfaces.power.{Rail3V3};
 import interfaces.data.{CANPort, SpaceWirePort};
 

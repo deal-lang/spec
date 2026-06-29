@@ -9,7 +9,7 @@
 }
 package spacecraft.adcs;
 
-import deal.std.units.{kg, W, mm, Hz, rpm, deg};
+import deal.std.units.{Angle, AngularVelocity, Frequency, Hz, Mass, Power, W, deg, kg, mm, rpm};
 import interfaces.power.{Rail5V};
 import interfaces.data.{CANPort};
 

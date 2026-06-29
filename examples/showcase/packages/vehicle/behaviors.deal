@@ -9,7 +9,7 @@
 }
 package vehicle.behaviors;
 
-import deal.std.units.{Percent, Energy, Velocity, Acceleration, Power, Duration};
+import deal.std.units.{Dimensionless, Energy, Velocity, Acceleration, Power, Duration};
 
 // Behavioral surface per BH-1..BH-7. Succession is "->", item/object flow is
 // "~>". Pins are directed (in/out/inout). Control nodes (decide/par/loop/for)
@@ -65,7 +65,7 @@ action def FastCharge {
     @concerns: "Charge curve tapering above 60% SOC limits throughput"
 
     in  chargerPower    : Power;
-    in  soc             : Percent;
+    in  soc             : Dimensionless;
     out chargeTime      : Duration;
     out energyDelivered : Energy;
 
@@ -74,7 +74,7 @@ action def FastCharge {
     action constantCurrent;
     action constantVoltage;
     action terminateCharge;
-    action measure { out sample : Percent; }
+    action measure { out sample : Dimensionless; }
 
     accept PlugInserted;
     assign chargeTime := soc + 10;

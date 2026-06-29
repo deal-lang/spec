@@ -9,7 +9,7 @@
 }
 package interfaces.electrical;
 
-import deal.std.units.{V, A, W, kW, ohm};
+import deal.std.units.{A, AngularVelocity, Current, Power, Torque, V, Voltage, W, kW, ohm};
 
 /**
  * High-voltage DC power interface for electric vehicle drivetrains.
